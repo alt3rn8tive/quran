@@ -848,3 +848,61 @@ h2 {
 .pagination li:hover:not(.active) {
     background: #ffffff;
 }
+/* Search workspace: calm surfaces, clear hierarchy, and touch-sized controls. */
+:root { --ink: #173c39; --accent: #176b5b; --line: #d9e4df; }
+body { background: #f6f7f2; color: var(--ink); line-height: 1.8; }
+header { background: #fff; border-bottom: 1px solid var(--line); }
+#main-menu ul { margin: 0; padding: 14px 20px; display: flex; justify-content: center; gap: 24px; flex-wrap: wrap; }
+#main-menu a { color: var(--ink); text-decoration: none; }
+.top { background: #f6f7f2; border: 0; padding: 32px 20px; }
+#search-container { max-width: 900px; margin: 0 auto; padding: 32px; background: white; border: 1px solid var(--line); border-radius: 20px; box-shadow: 0 8px 30px #173c3908; }
+.eyebrow { color: var(--accent); font-size: .85rem; font-weight: bold; }
+h1 { font-size: clamp(1.6rem, 4vw, 2.3rem); margin: 8px 0; }
+.description, .field-hint { color: #526963; }
+.field-hint { font-size: .9rem; margin: 8px 0 16px; }
+.input-label { display: block; font-weight: bold; margin-top: 24px; }
+.search-input { display: flex; gap: 12px; width: 100%; margin-top: 8px; }
+input[type=text]#search-input { flex: 1; min-width: 0; width: auto; float: none; padding: 14px 18px; height: auto; border: 1px solid #9bb8ac; border-radius: 12px; font-size: 1.15rem; letter-spacing: normal !important; margin: 0; box-sizing: border-box; }
+button { background: #edf5f0; color: var(--ink); border: 1px solid var(--line); border-radius: 8px; padding: 8px 14px; min-height: 44px; cursor: pointer; font-size: .95rem; }
+button:hover { background: #dcece3; color: var(--ink); }
+.search-input button { background: var(--accent); color: white; width: auto; float: none; padding: 10px 32px; border: 0; }
+button:disabled { opacity: .5; cursor: default; }
+button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-visible, a:focus-visible { outline: 3px solid #bf8d35; outline-offset: 3px; }
+.quick-examples { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 16px 0 24px; font-size: .85rem; }
+.quick-examples button { font-size: .85rem; background: white; }
+details.context-builder, details#input-options { padding: 16px 0; border-top: 1px solid var(--line); }
+summary { cursor: pointer; font-weight: bold; padding: 4px; }
+.context-controls { display: flex; gap: 16px; flex-wrap: wrap; align-items: end; margin-top: 12px; }
+.context-controls label { display: grid; gap: 6px; }
+select { font: inherit; background: white; color: var(--ink); padding: 8px 12px; border: 1px solid #9bb8ac; border-radius: 8px; min-height: 44px; }
+.search-options { display: flex; flex-wrap: wrap; gap: 10px 24px; padding: 16px 0; }
+.search-options label { display: flex; align-items: center; gap: 8px; cursor: pointer; }
+input[type=checkbox] { accent-color: var(--accent); width: 18px; height: 18px; }
+#input-options h3 { font-size: 1rem; margin: 16px 0 8px; }
+#input-options button { margin: 4px; }
+#input-options small { margin-inline-start: 8px; }
+#main-container { background: #f6f7f2; box-shadow: none; max-width: 1250px; padding: 0 24px 40px; display: flow-root; }
+.results-intro { text-align: center; padding: 25px 16px; color: #526963; }
+.results-intro h2 { color: var(--ink); font-size: 1.3rem; }
+.results-summary { padding: 16px 0; font-weight: bold; }
+.results-summary span { font-size: .85rem; font-weight: normal; margin-inline-start: 16px; }
+#data-list { padding: 0; list-style: none; }
+#data-list > li { background: white; border: 1px solid var(--line); border-radius: 12px; padding: 18px 24px; margin-bottom: 12px; }
+#data-list p { font-size: 1.2rem; line-height: 2.2; margin: 0; }
+.ayah-source a { color: var(--accent); font-size: .85rem; }
+.filter, .sidebar-title { background: white; border-color: var(--line); border-radius: 10px; }
+.highlightedText { background: #fff0bd; color: #583c0a; border-radius: 3px; }
+#empty-search-results { background: #fff5dc; border-radius: 12px; padding: 24px; }
+@media (max-width: 600px) {
+    .top { padding: 16px 12px; }
+    #search-container { padding: 20px 16px; border-radius: 14px; }
+    #main-menu ul { gap: 14px; font-size: .85rem; }
+    .search-input { flex-wrap: wrap; }
+    input[type=text]#search-input { flex-basis: 100%; width: 100%; }
+    .search-input button { width: 100%; }
+    .search-options { flex-direction: column; }
+    #main-container { padding: 0 12px 24px; }
+    .left, .right { float: none; width: 100%; padding: 0; }
+    .filter { width: 100%; margin: 8px 0; }
+    .results-summary span { display: block; margin: 0; }
+}

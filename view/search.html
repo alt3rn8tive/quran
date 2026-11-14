@@ -2,70 +2,38 @@
 <div class="top">
     <div id="search-container">
         <div class="search-header">
-            <h1>أداة بحث في القرآن الكريم</h1>
-            <p class="description">أداة تمكنك من البحث عن كلمة دون تحديدها أو عبر تحديد بعض حروفها وترك الباقي دون تحديد، وكذلك بالنسبة للحركات.</p>
-            <button ng-click="toggleHelpVisibility()">
-                {{ helpVisible ? 'إخفاء المساعدة' : 'عرض المساعدة' }}
-            </button>
-<!--            <button ng-click="openPopup()">للبحث ضمن اختيارات</button>-->
-
-            <div ng-show="helpVisible" class="help-section">
-                <h2>كيفية استخدام خانة البحث</h2>
-
-                <div class="example">
-                    <strong>البحث باستخدام حرف واحد (ـ):</strong><br>
-                    للبحث عن كلمات تحتوي على حرف مفتوح يتبعه مَد بالألف وهمزة، استخدم الزر "<span
-                        class="highlight">أي حرف (ـ)</span>" أو اكتب (ـ) وبعدها الفتحة والحروف المطلوبة. <br>
-                    مثال: "<span class="highlight">ـَاء</span>" يتناسب مع "<span class="highlight">مَاء</span>"، "<span
-                        class="highlight">سَاء</span>"، "<span class="highlight">جَاء</span>"، وأي كلمة تحتوي على حرف مفتوح
-                    يتبعه مَد بالألف وهمزة مثل "أَ<span class="highlight">ضَاء</span>َتْ".
-                    <br>
-                    <button class="button-link" ng-click="openNewTab('ـَاء')">اظهر كل نتائج البحث</button>
-                </div>
-
-                <div class="example">
-                    <strong>البحث باستخدام حرف أو أكثر (.):</strong><br>
-                    للبحث عن كلمات تبدأ بألف ولام وحرف الحاء، استخدم الزر "<span class="highlight">حرف أو أكثر (.)</span>" أو
-                    اكتب (.) بعد كتابة الحروف. <br>
-                    مثال: "<span class="highlight"> الح.</span>" يتناسب مع "<span class="highlight">الْحَقُّ</span>"، "<span
-                        class="highlight">الْحَمْدُ</span>"، وجميع الكلمات التي تبدأ بألف ولام وحرف الحاء مع مراعاة وجود مسافة
-                    لتحديد أن الحرف الأول في بداية الكلمة.
-                    <br>
-                    <button class="button-link" ng-click="openNewTab(' الح.')">اظهر كل نتائج البحث</button>
-                </div>
-
-                <div class="example">
-                    <strong>البحث عن كلمة أو أكثر (..):</strong><br>
-                    للبحث عن مجموعة من الكلمات، استخدم الزر "<span class="highlight">كلمة أو أكثر (..)</span>". <br>
-                    مثال: "<span class="highlight">إذا .. قالوا</span>" يتناسب مع: <br>
-                    <ul>
-                        <li><span class="highlight">"إِذَا لَقُوا الَّذِينَ آمَنُوا قَالُوا"</span></li>
-                        <li><span class="highlight">"إِذَا قِيلَ لَهُمُ اتَّبِعُوا مَا أَنْزَلَ اللَّهُ قَالُوا"</span></li>
-                    </ul>
-                    <button class="button-link" ng-click="openNewTab('إذا .. قالوا')">اظهر كل نتائج البحث</button>
-                </div>
-
-                <p class="example">يمكنك البِدء عبر اختيار أحد الأمثلة للتعرف على <a href="#!/search-features">إمكانيات أداة البحث</a>.</p>
-                <div id="examples-container">
-                    <button class="btn" ng-click="redirectTo('#!/search?s=أولائك%20هم%20.&filter_results=&filter_suwar=&exclude_part_of_words=false#main-container')">ما الكلمة التي تتبع (أولائك هم) في القرآن وما هي أعداد تكرارها؟</button>
-                    <button class="btn" ng-click="redirectTo('#!/search?s=.%20.&search_only_on_end&exclude_part_of_words&filter_results=&filter_suwar=#main-container')">ما الكلمتين الأكثر تكراراً في نهايات الآيات؟</button>
-                    <button class="btn" ng-click="redirectTo('#!/search?s=.%20.%20كانوا%20يعملون&search_only_from_beginning=false&search_only_on_end&exclude_part_of_words&filter_results=&filter_suwar=#main-container')">في نهايات الآيات ما كل كلمتين تسبقان (كانوا يعملون)؟</button>
-                    <button class="btn" ng-click="redirectTo('#!/search?s=.ر.ح.م.&search_only_on_end=false&exclude_part_of_words&filter_results=&filter_suwar=#main-container')">ما الكلمات التي جذرها هو رَحِمَ وغيرها من الكلمات التي تحتوي على الحروف الجذر بنفس الترتيب؟</button>
-                    <button class="btn" ng-click="redirectTo('#!/search?s=يَـْـَـ&search_only_on_end=false&exclude_part_of_words&filter_results=&filter_suwar=#main-container')">ما الكلمات التي تشبه وزن يَفْعَل في القرآن؟</button>
-                </div>
-            </div>
-
+            <span class="eyebrow">تدبّر الكلمات · اكتشف السياق</span>
+            <h1>ابحث في القرآن بطريقتك</h1>
+            <p class="description">اكتب كلمة أو جزءاً منها. أضف الحركات التي تريد مطابقتها، واترك الباقي دون تشكيل.</p>
         </div>
-
+        <label class="input-label" for="search-input">ما الذي تبحث عنه؟</label>
         <div class="search-input fix-height">
             <input id="search-input" name="regex_input" ng-trim="false"
                    ng-keyup="$event.keyCode == 13 && searchButtonClicked()"
-                   type="text" ng-model="userSearchQuery" placeholder="أدخل الكلمة المراد البحث عنها"/>
+                   type="text" ng-model="userSearchQuery" aria-describedby="search-hint" placeholder="مثلاً: رحمة، جِن، أو الله*"/>
             <button ng-click="searchButtonClicked()">ابحث</button>
         </div>
 
+        <p id="search-hint" class="field-hint">دون تشكيل: جميع الحركات. مع التشكيل: مطابقة الحركات المكتوبة.</p>
+        <div class="quick-examples" aria-label="أمثلة جاهزة">
+            <span>جرّب مثالاً:</span>
+            <button ng-click="useExample('رحمة')">كلمة دون تشكيل</button>
+            <button ng-click="useExample('جِن')">حركة محددة</button>
+            <button ng-click="useExample('ـَاء')">حرف غير محدد</button>
+            <button ng-click="useExample('الله (.)')">الكلمة التالية للفظ الله</button>
+        </div>
+        <details class="context-builder">
+            <summary>اكتشف الكلمات التي تسبق عبارتك أو تليها</summary>
+            <p class="field-hint">اكتب العبارة في خانة البحث أولاً، ثم اختر الكلمات التي تريد جمعها وعدّ تكرارها.</p>
+            <div class="context-controls">
+                <label>الموقع <select ng-model="contextDirection"><option value="after">بعد العبارة</option><option value="before">قبل العبارة</option></select></label>
+                <label>عدد الكلمات <select ng-model="contextCount"><option value="1">كلمة واحدة</option><option value="2">كلمتان</option><option value="3">ثلاث كلمات</option></select></label>
+                <button ng-click="captureContext()" ng-disabled="!userSearchQuery.trim()">أضف إلى البحث</button>
+            </div>
+            <p class="field-hint">ستظهر الكلمات المختارة في قائمة النتائج مع عدد تكرارها، والآيات الكاملة بجانبها.</p>
+        </details>
         <div class="search-notification">
-            <p class="error-message" ng-if="hasInputError">يوجد خطأ ما في نص البحث المُدخل</p>
+            <p class="error-message" role="alert" ng-if="hasInputError">تعذّر فهم صيغة البحث. راجع الأقواس والرموز، أو جرّب أحد الأمثلة أعلاه.</p>
             <p class="success-message" ng-if="isSearchDone">
                 <button class="btn" ng-click="scrollToMainContainer()">انتقل لنتائج البحث</button>
             </p>
@@ -74,55 +42,48 @@
         <div class="search-options">
             <label>
                 <input type="checkbox" ng-model="shouldRemoveLastHarakah"/>
-                <span>إزالة الحركة الأخيرة من نتائج البحث؟</span>
+                <span>جمع النتائج دون الحركة الأخيرة</span>
             </label>
 
             <label>
                 <input type="checkbox" ng-model="searchConfig.excludePartOfWords"/>
-                <span>استثناء البحث عن الأجزاء من الكلمات؟</span>
+                <span>كلمات كاملة فقط</span>
             </label>
 
             <label>
                 <input type="checkbox" ng-model="searchConfig.searchFromBeginning"/>
-                <span>البحث ابتداءً من بدايات الآيات؟</span>
+                <span>في بداية الآية فقط</span>
             </label>
 
             <label>
                 <input type="checkbox" ng-model="searchConfig.searchOnEnd"/>
-                <span>البحث انتهاءً عند نهايات الآيات؟</span>
+                <span>في نهاية الآية فقط</span>
             </label>
         </div>
 
-        <div id="input-options" class="buttons-with-spacing">
-            <button class="btn pull-left" ng-if="!shouldShowInputOptionsInfo" ng-click="showInputOptionInfo()">إظهار طريقة البحث</button>
-            <button class="btn pull-left" ng-if="shouldShowInputOptionsInfo" ng-click="hideInputOptionInfo()">إخفاء طريقة البحث</button>
-            <h3>خيارات إضافية للبحث</h3>
-            <div ng-if="shouldShowInputOptionsInfo">
-                <p class="description">عند اختيار ما تريد البحث عنه من الخيارات أدناه ستتم إضافته للمكان المخصص لإدخال
-                    النص
-                    المبحوث عنه</p>
-                <p class="description">قبل الاختيار تأكد بأنك حددت المكان المناسب عبر وضع مؤشر الكتابة حيث تريد إدخال ما
-            ستختار البحث عنه، وفي حال عدم وضع مؤشر الكتابة في أي مكان، فسيتم وضع ما تختاره في النهاية</p>
-            </div>
-            <button ng-click="appendToCurrentTypingCursor('ـ')">أي حرف بأي حركة (ـ)</button>
-            <button ng-click="appendToCurrentTypingCursor('.')">حرف أو أكثر ضمن كلمة (.)</button>
-            <button ng-click="appendToCurrentTypingCursor('*')">حرف أو أكثر في حال وجوده (*)</button>
-            <button ng-click="appendToCurrentTypingCursor(' . ')">أي كلمة ( . )</button>
-            <button ng-click="appendToCurrentTypingCursor('..')"> كلمة أو أكثر (..)</button>
+        <details id="input-options" class="buttons-with-spacing">
+            <summary>خصّص الحروف والحركات</summary>
+            <p class="field-hint">ضع المؤشر في خانة البحث، ثم اختر ما تريد إضافته. لا تحتاج إلى كتابة الرموز بنفسك.</p>
+            <h3>الحروف والكلمات</h3>
+            <button ng-click="appendToCurrentTypingCursor('ـ')">حرف واحد غير محدد <small>ـ</small></button>
+            <button ng-click="appendToCurrentTypingCursor('*')">لا حرف أو عدة حروف <small>*</small></button>
+            <button ng-click="appendToCurrentTypingCursor('.')">حرف واحد أو أكثر <small>.</small></button>
+            <button ng-click="appendToCurrentTypingCursor(' . ')">كلمة كاملة غير محددة</button>
+            <button ng-click="appendToCurrentTypingCursor(' .. ')">كلمة أو أكثر بين عبارتين</button>
+            <h3>الحركات</h3>
+            <button ng-click="appendToCurrentTypingCursor(FATHA)">فتحة َ</button>
+            <button ng-click="appendToCurrentTypingCursor(KASRA)">كسرة ِ</button>
+            <button ng-click="appendToCurrentTypingCursor(DAMMA)">ضمة ُ</button>
+            <button ng-click="appendToCurrentTypingCursor(SHADDA)">شدة ّ</button>
+            <button ng-click="appendToCurrentTypingCursor(SUKUN)">سكون ْ</button>
             <button ng-click="appendToCurrentTypingCursor(ANY_SINGLE_LETTER + FATHA)">أي حرف مفتوح</button>
             <button ng-click="appendToCurrentTypingCursor(ANY_SINGLE_LETTER + KASRA)">أي حرف مكسور</button>
             <button ng-click="appendToCurrentTypingCursor(ANY_SINGLE_LETTER + DAMMA)">أي حرف مضموم</button>
-            <button ng-click="appendToCurrentTypingCursor(SHADDA)">شدة</button>
-            <button ng-click="appendToCurrentTypingCursor(SUKUN)">سكون</button>
-            <button class="large-symbol" ng-click="appendToCurrentTypingCursor('۩')">۩</button>
-            <button class="large-symbol" ng-click="appendToCurrentTypingCursor('ۜ')">ۜ</button>
-            <button class="large-symbol" ng-click="appendToCurrentTypingCursor('ۛ')">ۛ</button>
-            <button class="large-symbol" ng-click="appendToCurrentTypingCursor('ۚ')">ۚ</button>
-            <button class="large-symbol" ng-click="appendToCurrentTypingCursor('ۙ')">ۙ</button>
-            <button class="large-symbol" ng-click="appendToCurrentTypingCursor('ۘ')">ۘ</button>
-            <button class="large-symbol" ng-click="appendToCurrentTypingCursor('ۗ')">ۗ</button>
-            <button class="large-symbol" ng-click="appendToCurrentTypingCursor('ۖ')">ۖ</button>
-        </div>
+            <details><summary>علامات الوقف والسجود</summary>
+                <button ng-repeat="symbol in ['۩','ۜ','ۛ','ۚ','ۙ','ۘ','ۗ','ۖ']" ng-click="appendToCurrentTypingCursor(symbol)" aria-label="إضافة علامة {{symbol}}">{{symbol}}</button>
+            </details>
+            <a href="#!/search-features">دليل البحث والأمثلة ←</a>
+        </details>
     </div>
 
     <div id="popup" class="popup">
@@ -145,11 +106,13 @@
 </div>
 
 <div id="main-container">
+    <div class="results-intro" ng-if="!isSearchDone && !hasInputError"><h2>كل بحث يبدأ بكلمة</h2><p>اكتب ما تتذكره من الآية، أو اختر مثالاً أعلاه. ستجد هنا الآيات والكلمات المطابقة وعدد تكرارها.</p></div>
+    <div class="results-summary" ng-if="isSearchDone" role="status">{{filteredAyat.length}} آية · {{resultsGroup.length}} نتيجة مختلفة <span>اختر كلمة أو سورة لتصفية الآيات.</span></div>
     <!--<input id="hide-sidebar" name="h" type="checkbox">-->
     <!--<label for="hide-sidebar">خيارات البحث</label>-->
 
     <div id="empty-search-results" ng-if="isSearchDone && !pagedItems.length">
-        لم يتم العثور على أي آية بِحَسب <a href="#!/search-features" target="_blank">طريقة البحث</a> المُوَضَّحة
+        لم نجد نتائج. جرّب إزالة بعض الحركات أو إلغاء «كلمات كاملة فقط» لتوسيع البحث. <a href="#!/search-features">اطّلع على أمثلة البحث</a>
     </div>
 
     <section class="left" ng-show="isSearchDone && pagedItems.length" style="border-right:1px">

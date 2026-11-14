@@ -781,6 +781,7 @@ myApp.controller('AyatSearchController', function ($scope, $window, $http, $rout
     };
 
     function startSearchingByEnteredText(enteredSearchStr) {
+        $scope.hasInputError = false;
         var regexPatternForString = getRegexPatternForString(enteredSearchStr, $scope.searchConfig);
         if (regexPatternForString) {
             $scope.searchQueryRegex = regexPatternForString; // This will trigger $watch expression to kick in
@@ -793,7 +794,23 @@ myApp.controller('AyatSearchController', function ($scope, $window, $http, $rout
         startSearchingByEnteredText(initSearchStr);
     }
 
+    $scope.contextDirection = 'after';
+    $scope.contextCount = '1';
+    $scope.useExample = function (text) {
+        $scope.userSearchQuery = text;
+        $scope.searchButtonClicked();
+    };
+    $scope.captureContext = function () {
+        var phrase = ($scope.userSearchQuery || '').trim();
+        if (!phrase) return;
+        var words = '(' + Array(Number($scope.contextCount)).fill('.').join(' ') + ')';
+        $scope.userSearchQuery = $scope.contextDirection === 'before'
+            ? words + ' ' + phrase : phrase + ' ' + words;
+        document.getElementById('search-input').focus();
+    };
+
     $scope.searchButtonClicked = function () {
+        if (!$scope.userSearchQuery.trim()) return;
         $location.search("s", $scope.userSearchQuery);
         $location.search("remove_harakah", $scope.shouldRemoveLastHarakah);
         $location.search("search_only_from_beginning", $scope.searchConfig.searchFromBeginning);
@@ -827,7 +844,7 @@ myApp.controller('AyatSearchController', function ($scope, $window, $http, $rout
         var cursorPos = input.selectionStart;
 
         // Concatenate the new character at the current cursor position
-        var newValue = inputValue.substring(0, cursorPos) + text + inputValue.substring(cursorPos);
+        var newValue = inputValue.substring(0, cursorPos) + text + inputValue.substring(input.selectionEnd);
 
         // Set the new value of the input
         input.value = newValue;
