@@ -772,15 +772,81 @@ myApp.controller('AyatSearchController', function ($scope, $window, $http, $rout
         $anchorScroll();
     };
 
-    $scope.shouldShowInputOptionsInfo = false;
-    $scope.showInputOptionInfo = function () {
-        $scope.shouldShowInputOptionsInfo = true;
+    var nextBlockId = 0;
+    $scope.blockTypes = QuranQueryBuilder.types;
+    $scope.harakahOptions = QuranQueryBuilder.marks;
+    $scope.newBlockType = 'text';
+    $scope.builderError = '';
+    $scope.queryEdited = false;
+
+    function restoreBuilder(query) {
+        var blocks = null;
+        var saved = $location.search().qb;
+        if (typeof saved === 'string') {
+            try {
+                var candidate = JSON.parse(saved);
+                if (Array.isArray(candidate) && QuranQueryBuilder.compile(candidate).query === query) blocks = candidate;
+            } catch (error) { /* Older links need no structured query. */ }
+        }
+        if (!blocks) blocks = QuranQueryBuilder.parse(query);
+        $scope.savedQueryOnly = !blocks;
+        $scope.queryBlocks = blocks || [];
+        $scope.queryBlocks.forEach(function (block) { block.id = ++nextBlockId; });
+    }
+    restoreBuilder(initSearchStr);
+
+    $scope.blockHint = function (block) {
+        return $scope.blockTypes.find(function (type) { return type.value === block.type; }).hint;
     };
-    $scope.hideInputOptionInfo = function () {
-        $scope.shouldShowInputOptionsInfo = false;
+    $scope.builderChanged = function () {
+        $scope.builderError = '';
+        $scope.hasInputError = false;
+        $scope.queryEdited = true;
+    };
+    function focusBlock(id) {
+        $timeout(function () {
+            var element = document.getElementById('query-block-' + id);
+            if (element) element.focus();
+        }, 0, false);
+    }
+    $scope.addBlock = function () {
+        var block = QuranQueryBuilder.create($scope.newBlockType);
+        var previous = $scope.queryBlocks[$scope.queryBlocks.length - 1];
+        if (block.type === 'text' && previous && previous.type === 'text') block.join = 'space';
+        block.id = ++nextBlockId;
+        $scope.queryBlocks.push(block);
+        $scope.builderChanged();
+        focusBlock(block.id);
+    };
+    $scope.changeBlockType = function (block) {
+        block.value = '';
+        block.mark = '';
+        block.count = 1;
+        $scope.builderChanged();
+    };
+    $scope.moveBlock = function (index, direction) {
+        var destination = index + direction;
+        if (destination < 0 || destination >= $scope.queryBlocks.length) return;
+        var block = $scope.queryBlocks.splice(index, 1)[0];
+        $scope.queryBlocks.splice(destination, 0, block);
+        $scope.builderChanged();
+        focusBlock(block.id);
+    };
+    $scope.removeBlock = function (index) {
+        $scope.queryBlocks.splice(index, 1);
+        $scope.builderChanged();
+        if ($scope.queryBlocks.length) focusBlock($scope.queryBlocks[Math.min(index, $scope.queryBlocks.length - 1)].id);
+        else $timeout(function () {
+            var element = document.getElementById('new-block-type');
+            if (element) element.focus();
+        }, 0, false);
+    };
+    $scope.startNewQuery = function () {
+        $location.search({});
     };
 
     function startSearchingByEnteredText(enteredSearchStr) {
+        $scope.hasInputError = false;
         var regexPatternForString = getRegexPatternForString(enteredSearchStr, $scope.searchConfig);
         if (regexPatternForString) {
             $scope.searchQueryRegex = regexPatternForString; // This will trigger $watch expression to kick in
@@ -793,13 +859,40 @@ myApp.controller('AyatSearchController', function ($scope, $window, $http, $rout
         startSearchingByEnteredText(initSearchStr);
     }
 
+    $scope.useExample = function (query) {
+        $location.search({s: query});
+        restoreBuilder(query);
+        $scope.userSearchQuery = query;
+        $scope.builderError = '';
+        $scope.queryEdited = false;
+        $scope.searchConfig = {searchFromBeginning: false, searchOnEnd: false, excludePartOfWords: false};
+        $scope.shouldRemoveLastHarakah = false;
+        $scope.useResults = {};
+        $scope.useSuwar = {};
+        startSearchingByEnteredText(query);
+    };
+
     $scope.searchButtonClicked = function () {
-        $location.search("s", $scope.userSearchQuery);
+        if ($scope.savedQueryOnly) return;
+        var compiled = QuranQueryBuilder.compile($scope.queryBlocks);
+        $scope.builderError = compiled.error || '';
+        if (compiled.error) return;
+        $scope.userSearchQuery = compiled.query;
+        // Search explicitly even when the URL has not changed (for example,
+        // after editing and restoring the same blocks).
+        $scope.useResults = {};
+        $scope.useSuwar = {};
+        startSearchingByEnteredText(compiled.query);
+        $scope.queryEdited = false;
+        var blocks = $scope.queryBlocks.map(function (block) {
+            return {type: block.type, value: block.value, join: block.join, mark: block.mark, count: block.count};
+        });
+        $location.search("s", compiled.query);
+        $location.search("qb", JSON.stringify(blocks));
         $location.search("remove_harakah", $scope.shouldRemoveLastHarakah);
         $location.search("search_only_from_beginning", $scope.searchConfig.searchFromBeginning);
         $location.search("search_only_on_end", $scope.searchConfig.searchOnEnd);
         $location.search("exclude_part_of_words", $scope.searchConfig.excludePartOfWords);
-        //reset filters
         $location.search("filter_results", "");
         $location.search("filter_suwar", "");
     };
@@ -814,85 +907,6 @@ myApp.controller('AyatSearchController', function ($scope, $window, $http, $rout
 
         // Set the updated search parameters using $location.search()
         $location.search(currentSearchParams);
-    };
-
-    $scope.appendToCurrentTypingCursor = function (text) {
-        // Get the input element
-        var input = document.getElementById("search-input");
-
-        // Get the current value of the input
-        var inputValue = input.value;
-
-        // Get the current cursor position
-        var cursorPos = input.selectionStart;
-
-        // Concatenate the new character at the current cursor position
-        var newValue = inputValue.substring(0, cursorPos) + text + inputValue.substring(cursorPos);
-
-        // Set the new value of the input
-        input.value = newValue;
-        $scope.userSearchQuery = newValue
-
-        // Move the cursor to the next position
-        let newPosition = cursorPos + text.length
-        input.setSelectionRange(newPosition, newPosition);
-        input.focus();
-    };
-
-    $scope.toggleTextAtStart = function (text) {
-        // Get the input element
-        var input = document.getElementById("search-input");
-
-        // Get the current value of the input
-        var inputValue = input.value;
-
-        // Get the current cursor position
-        var cursorPos = input.selectionStart;
-        var newValue = inputValue;
-
-        // Check if the text is already at the start, and remove it
-        if (inputValue.startsWith(text)) {
-            newValue = inputValue.substring(text.length);
-        } else {
-            // Concatenate the new character at the start
-            newValue = text + inputValue;
-        }
-
-        // Set the new value of the input
-        input.value = newValue;
-        $scope.userSearchQuery = newValue;
-
-        // Set the cursor position to the original value plus the length of the added text
-        input.setSelectionRange(cursorPos + text.length, cursorPos + text.length);
-        input.focus();
-    };
-
-    $scope.toggleTextAtEnd = function (text) {
-        // Get the input element
-        var input = document.getElementById("search-input");
-
-        // Get the current value of the input
-        var inputValue = input.value;
-
-        // Get the current cursor position
-        var cursorPos = input.selectionStart;
-        var newValue = inputValue;
-
-        // Check if the text is already at the end, and remove it
-        if (inputValue.endsWith(text)) {
-            newValue = inputValue.substring(0, inputValue.length - text.length);
-        } else {
-            // Concatenate the new character at the end
-            newValue = inputValue + text;
-        }
-
-        // Set the new value of the input
-        input.value = newValue;
-        $scope.userSearchQuery = newValue;
-
-        // Set the cursor position to the original value
-        input.setSelectionRange(cursorPos, cursorPos);
-        input.focus();
     };
 
     $scope.clearResultsFilter = function () {
@@ -926,75 +940,7 @@ myApp.controller('AyatSearchController', function ($scope, $window, $http, $rout
         }
     }
 
-    $scope.helpVisible = false;
 
-    $scope.toggleHelpVisibility = function () {
-        $scope.helpVisible = !$scope.helpVisible;
-    };
-
-    $scope.openNewTab = function (queryString) {
-        // Get the current URL path
-        var currentPath = window.location.pathname;
-
-        // Construct the URL with the current path and specified query parameters
-        var url = currentPath + '#!/search?s=' + encodeURIComponent(queryString);
-
-        // Open a new tab with the constructed URL
-        window.open(url, '_blank');
-    };
-
-    $scope.inputs = [{
-        value: ''
-    }, {
-        value: ''
-    }];
-
-    $scope.openPopup = function () {
-        document.getElementById('popup').style.display = 'block';
-    };
-
-    $scope.removeInput = function (index) {
-        if ($scope.inputs.length > 2) {
-            $scope.inputs.splice(index, 1);
-        } else {
-            alert('يجب أن يكون هناك حقلان على الأقل.');
-        }
-    };
-
-    $scope.handleEnter = function ($event, index, length) {
-        // Check if the key pressed is Enter
-        let enterKeyCode = 13;
-        if ($event.keyCode === enterKeyCode) {
-            // Prevent the default action
-            $event.preventDefault();
-
-            if (index + 1 < length) {
-                // If it's not the last input, focus on the next one
-                document.getElementById("input_" + (index + 1)).focus();
-            } else {
-                // If it's the last input, call `done()`
-                $scope.done();
-            }
-        }
-    };
-
-    $scope.addInput = function () {
-        $scope.inputs.push({
-            value: ''
-        });
-    };
-
-    $scope.done = function () {
-        var regexPattern = "(" + $scope.inputs.map(function (input) {
-            return input.value;
-        }).join("|") + ")";
-        $scope.appendToCurrentTypingCursor(regexPattern);
-        $scope.closePopup();
-    };
-
-    $scope.closePopup = function () {
-        document.getElementById('popup').style.display = 'none';
-    };
 });
 
 myApp.filter('groupBy',
