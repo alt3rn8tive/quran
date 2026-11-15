@@ -6,107 +6,109 @@
             <h1>ابحث في القرآن بطريقتك</h1>
             <p class="description">اكتب كلمة أو جزءاً منها. أضف الحركات التي تريد مطابقتها، واترك الباقي دون تشكيل.</p>
         </div>
-        <label class="input-label" for="search-input">ما الذي تبحث عنه؟</label>
-        <div class="search-input fix-height">
-            <input id="search-input" name="regex_input" ng-trim="false"
-                   ng-keyup="$event.keyCode == 13 && searchButtonClicked()"
-                   type="text" ng-model="userSearchQuery" aria-describedby="search-hint" placeholder="مثلاً: رحمة، جِن، أو الله*"/>
-            <button ng-click="searchButtonClicked()">ابحث</button>
+        <div class="saved-query-note" ng-if="savedQueryOnly" role="status">
+            <strong>نتائج بحث محفوظ بصيغة متقدمة</strong>
+            <p>يعمل هذا الرابط كما هو. لإنشاء بحث مختلف باستخدام الأجزاء، ابدأ بحثاً جديداً.</p>
+            <button type="button" ng-click="startNewQuery()">ابدأ بحثاً جديداً</button>
         </div>
-
-        <p id="search-hint" class="field-hint">دون تشكيل: جميع الحركات. مع التشكيل: مطابقة الحركات المكتوبة.</p>
+        <form class="query-builder" ng-submit="searchButtonClicked()" ng-show="!savedQueryOnly" novalidate>
+            <div class="builder-heading">
+                <h2 id="builder-title">ماذا تريد أن تجد؟</h2>
+                <span>رتّب الأجزاء من الأعلى إلى الأسفل</span>
+            </div>
+            <p id="builder-help" class="field-hint">ابدأ بنص تعرفه، ثم أضف أجزاءً للحروف أو الكلمات التي لا تعرفها. لا تحتاج إلى كتابة أي رموز.</p>
+            <ol class="query-blocks" aria-labelledby="builder-title" aria-describedby="builder-help">
+                <li class="query-block" ng-repeat="block in queryBlocks track by block.id">
+                    <div class="block-number" aria-hidden="true">{{$index + 1}}</div>
+                    <div class="block-editor">
+                        <label class="block-type-label" for="query-block-{{block.id}}">نوع الجزء {{$index + 1}}</label>
+                        <select id="query-block-{{block.id}}" class="block-type" ng-model="block.type"
+                                ng-options="type.value as type.label for type in blockTypes" ng-change="changeBlockType(block)"></select>
+                        <p class="block-hint" id="block-hint-{{block.id}}">{{blockHint(block)}}</p>
+                        <label class="block-field" ng-if="block.type === 'text'">
+                            <span>النص</span>
+                            <input type="text" class="block-text" ng-model="block.value" ng-change="builderChanged()" ng-trim="false"
+                                   placeholder="مثلاً: رحمة أو جِن" aria-describedby="block-hint-{{block.id}}" autocomplete="off"/>
+                        </label>
+                        <label class="block-field" ng-if="block.type === 'letter'">
+                            <span>حركة الحرف</span>
+                            <select ng-model="block.mark" ng-change="builderChanged()">
+                                <option ng-repeat="mark in harakahOptions" value="{{mark.value}}">{{mark.label}}</option>
+                                <option ng-if="block.mark.length > 1" value="{{block.mark}}">الحركات المحفوظة</option>
+                            </select>
+                        </label>
+                        <label class="block-field" ng-if="block.type === 'capture'">
+                            <span>عدد الكلمات المتتابعة</span>
+                            <input type="number" min="1" max="20" step="1" ng-model="block.count" ng-change="builderChanged()"/>
+                        </label>
+                        <label class="block-connection" ng-if="$index > 0 && (block.type === 'text' || block.type === 'letter' || block.type === 'letters' || block.type === 'optional') && (queryBlocks[$index - 1].type === 'text' || queryBlocks[$index - 1].type === 'letter' || queryBlocks[$index - 1].type === 'letters' || queryBlocks[$index - 1].type === 'optional')">
+                            <span>علاقته بالجزء السابق</span>
+                            <select ng-model="block.join" ng-change="builderChanged()"><option value="attached">متصل به دون مسافة</option><option value="space">بعده بمسافة</option></select>
+                        </label>
+                    </div>
+                    <div class="block-actions" role="group" aria-label="ترتيب الجزء {{$index + 1}} أو حذفه">
+                        <button type="button" ng-click="moveBlock($index, -1)" ng-disabled="$first" aria-label="نقل الجزء {{$index + 1}} إلى الأعلى" title="إلى الأعلى">↑</button>
+                        <button type="button" ng-click="moveBlock($index, 1)" ng-disabled="$last" aria-label="نقل الجزء {{$index + 1}} إلى الأسفل" title="إلى الأسفل">↓</button>
+                        <button type="button" class="remove-block" ng-click="removeBlock($index)" aria-label="حذف الجزء {{$index + 1}}">حذف</button>
+                    </div>
+                </li>
+            </ol>
+            <p class="builder-empty" ng-if="!queryBlocks.length">أضف نصاً أو جزءاً غير محدد من القائمة أدناه.</p>
+            <div class="add-block-controls">
+                <label for="new-block-type">أضف جزءاً إلى البحث</label>
+                <div>
+                    <select id="new-block-type" ng-model="newBlockType" ng-options="type.value as type.label for type in blockTypes"></select>
+                    <button type="button" ng-click="addBlock()">إضافة جزء</button>
+                </div>
+            </div>
+            <p class="builder-error" ng-if="builderError" role="alert">{{builderError}}</p>
+            <div class="builder-submit">
+                <button class="primary-search" type="submit">ابحث في القرآن</button>
+                <p class="field-hint" ng-if="queryEdited && isSearchDone" role="status">تم تعديل البحث. اضغط «ابحث في القرآن» لتحديث النتائج.</p>
+            </div>
+        </form>
         <div class="quick-examples" aria-label="أمثلة جاهزة">
             <span>جرّب مثالاً:</span>
-            <button ng-click="useExample('رحمة')">كلمة دون تشكيل</button>
-            <button ng-click="useExample('جِن')">حركة محددة</button>
-            <button ng-click="useExample('ـَاء')">حرف غير محدد</button>
-            <button ng-click="useExample('الله (.)')">الكلمة التالية للفظ الله</button>
+            <button type="button" ng-click="useExample('رحمة')">كلمة دون تشكيل</button>
+            <button type="button" ng-click="useExample('جِن')">حركة محددة</button>
+            <button type="button" ng-click="useExample('ـَاء')">حرف غير محدد</button>
+            <button type="button" ng-click="useExample('الله (.)')">الكلمة التالية للفظ الله</button>
         </div>
-        <details class="context-builder">
-            <summary>اكتشف الكلمات التي تسبق عبارتك أو تليها</summary>
-            <p class="field-hint">اكتب العبارة في خانة البحث أولاً، ثم اختر الكلمات التي تريد جمعها وعدّ تكرارها.</p>
-            <div class="context-controls">
-                <label>الموقع <select ng-model="contextDirection"><option value="after">بعد العبارة</option><option value="before">قبل العبارة</option></select></label>
-                <label>عدد الكلمات <select ng-model="contextCount"><option value="1">كلمة واحدة</option><option value="2">كلمتان</option><option value="3">ثلاث كلمات</option></select></label>
-                <button ng-click="captureContext()" ng-disabled="!userSearchQuery.trim()">أضف إلى البحث</button>
-            </div>
-            <p class="field-hint">ستظهر الكلمات المختارة في قائمة النتائج مع عدد تكرارها، والآيات الكاملة بجانبها.</p>
-        </details>
         <div class="search-notification">
-            <p class="error-message" role="alert" ng-if="hasInputError">تعذّر فهم صيغة البحث. راجع الأقواس والرموز، أو جرّب أحد الأمثلة أعلاه.</p>
+            <p class="error-message" role="alert" ng-if="hasInputError">تعذّر تنفيذ هذا البحث. جرّب تعديل الأجزاء أو اختيار أحد الأمثلة.</p>
             <p class="success-message" ng-if="isSearchDone">
                 <button class="btn" ng-click="scrollToMainContainer()">انتقل لنتائج البحث</button>
             </p>
         </div>
 
-        <div class="search-options">
+        <div class="search-options" ng-show="!savedQueryOnly">
             <label>
-                <input type="checkbox" ng-model="shouldRemoveLastHarakah"/>
+                <input type="checkbox" ng-model="shouldRemoveLastHarakah" ng-change="builderChanged()"/>
                 <span>جمع النتائج دون الحركة الأخيرة</span>
             </label>
 
             <label>
-                <input type="checkbox" ng-model="searchConfig.excludePartOfWords"/>
+                <input type="checkbox" ng-model="searchConfig.excludePartOfWords" ng-change="builderChanged()"/>
                 <span>كلمات كاملة فقط</span>
             </label>
 
             <label>
-                <input type="checkbox" ng-model="searchConfig.searchFromBeginning"/>
+                <input type="checkbox" ng-model="searchConfig.searchFromBeginning" ng-change="builderChanged()"/>
                 <span>في بداية الآية فقط</span>
             </label>
 
             <label>
-                <input type="checkbox" ng-model="searchConfig.searchOnEnd"/>
+                <input type="checkbox" ng-model="searchConfig.searchOnEnd" ng-change="builderChanged()"/>
                 <span>في نهاية الآية فقط</span>
             </label>
         </div>
 
-        <details id="input-options" class="buttons-with-spacing">
-            <summary>خصّص الحروف والحركات</summary>
-            <p class="field-hint">ضع المؤشر في خانة البحث، ثم اختر ما تريد إضافته. لا تحتاج إلى كتابة الرموز بنفسك.</p>
-            <h3>الحروف والكلمات</h3>
-            <button ng-click="appendToCurrentTypingCursor('ـ')">حرف واحد غير محدد <small>ـ</small></button>
-            <button ng-click="appendToCurrentTypingCursor('*')">لا حرف أو عدة حروف <small>*</small></button>
-            <button ng-click="appendToCurrentTypingCursor('.')">حرف واحد أو أكثر <small>.</small></button>
-            <button ng-click="appendToCurrentTypingCursor(' . ')">كلمة كاملة غير محددة</button>
-            <button ng-click="appendToCurrentTypingCursor(' .. ')">كلمة أو أكثر بين عبارتين</button>
-            <h3>الحركات</h3>
-            <button ng-click="appendToCurrentTypingCursor(FATHA)">فتحة َ</button>
-            <button ng-click="appendToCurrentTypingCursor(KASRA)">كسرة ِ</button>
-            <button ng-click="appendToCurrentTypingCursor(DAMMA)">ضمة ُ</button>
-            <button ng-click="appendToCurrentTypingCursor(SHADDA)">شدة ّ</button>
-            <button ng-click="appendToCurrentTypingCursor(SUKUN)">سكون ْ</button>
-            <button ng-click="appendToCurrentTypingCursor(ANY_SINGLE_LETTER + FATHA)">أي حرف مفتوح</button>
-            <button ng-click="appendToCurrentTypingCursor(ANY_SINGLE_LETTER + KASRA)">أي حرف مكسور</button>
-            <button ng-click="appendToCurrentTypingCursor(ANY_SINGLE_LETTER + DAMMA)">أي حرف مضموم</button>
-            <details><summary>علامات الوقف والسجود</summary>
-                <button ng-repeat="symbol in ['۩','ۜ','ۛ','ۚ','ۙ','ۘ','ۗ','ۖ']" ng-click="appendToCurrentTypingCursor(symbol)" aria-label="إضافة علامة {{symbol}}">{{symbol}}</button>
-            </details>
-            <a href="#!/search-features">دليل البحث والأمثلة ←</a>
-        </details>
+        <a class="builder-guide-link" href="#!/search-features">كيف أبني بحثي؟ ←</a>
     </div>
-
-    <div id="popup" class="popup">
-        <h3>تحديد خيارات البحث</h3>
-        <p class="info-text">أدخل الخيارات التي ترغب في البحث بها، مثلاً: يمكنك البحث عن الآيات التي تحتوي على "آدم" أو
-            "عيسى".</p>
-        <div class="input-container" ng-repeat="input in inputs track by $index">
-            <input type="text" ng-model="input.value" placeholder="الخيار {{$index + 1}}" id="input_{{$index}}"
-                   ng-keydown="handleEnter($event, $index, inputs.length)">
-            <span class="remove-input" ng-if="$index > 1" ng-click="removeInput($index)">حذف</span>
-        </div>
-        <span class="add-input" ng-click="addInput()">+ إضافة خيار</span>
-        <br>
-        <button class="confirm-btn" ng-click="done()">أضف لنص البحث</button>
-        <button class="close-btn" ng-click="closePopup()">إغلاق</button>
-    </div>
-    <!--<br>-->
-    <!--ضمن النتائج: <input name="company" type="text" class="search-input" ng-model="query"/>-->
-
 </div>
 
 <div id="main-container">
-    <div class="results-intro" ng-if="!isSearchDone && !hasInputError"><h2>كل بحث يبدأ بكلمة</h2><p>اكتب ما تتذكره من الآية، أو اختر مثالاً أعلاه. ستجد هنا الآيات والكلمات المطابقة وعدد تكرارها.</p></div>
+    <div class="results-intro" ng-if="!isSearchDone && !hasInputError"><h2>كل بحث يبدأ بكلمة</h2><p>أضف ما تتذكره من الآية في جزء «نص محدد»، أو اختر مثالاً أعلاه. ستجد هنا الآيات والكلمات المطابقة وعدد تكرارها.</p></div>
     <div class="results-summary" ng-if="isSearchDone" role="status">{{filteredAyat.length}} آية · {{resultsGroup.length}} نتيجة مختلفة <span>اختر كلمة أو سورة لتصفية الآيات.</span></div>
     <!--<input id="hide-sidebar" name="h" type="checkbox">-->
     <!--<label for="hide-sidebar">خيارات البحث</label>-->
