@@ -90,11 +90,11 @@ function getRegexPatternForString(text, config) {
     text = text.replace(/(^|\s)\.\.(\s|$)/g, " .(?: .)*? ");
     //text = text.replace(/\s\.\.\s/g,"(?:\\s[^"++"])*\\s");
 
-    // use "." to match one or more chars in a word
-    text = text.replace(/\./g, "_+");
-
-    // use "**+" to match any number of chars in a word
-    text = text.replace(/\*{2,}/g, "_*");
+    // Keep whole-word wildcards separate from single-letter patterns. A dagger
+    // alif can be both a letter and a mark; repeating letter-with-marks groups
+    // makes long, unsuccessful word-gap searches backtrack exponentially.
+    text = text.replace(/\./g, "\uE000");
+    text = text.replace(/\*{2,}/g, "\uE001");
 
     text = text.replace(/ا/g, "[ٰا]");
 
@@ -114,12 +114,18 @@ function getRegexPatternForString(text, config) {
     text = text.replace(SHADDA + KASRA, KASRA + SHADDA);
     text = text.replace(SHADDA + DAMMA, DAMMA + SHADDA);
 
-    if (config.excludePartOfWords) {
+    var wordMatch = config.wordMatch || (config.excludePartOfWords ? 'whole' : 'contains');
+    if (wordMatch === 'whole') {
         text = " " + text.trim() + " ";
+    } else if (wordMatch === 'starts') {
+        text = " " + text.trimStart();
+    } else if (wordMatch === 'ends') {
+        text = text.trimEnd() + " ";
     }
 
-    // remove duplicated spaces and allow matching quran_symbols
-    text = text.replace(/(?!^)\s+/g, "(?:|(?: [" + quran_symbols + "])*) ");
+    // A single optional path avoids exponentially many identical empty
+    // separator matches when a word-gap spans a long verse.
+    text = text.replace(/(?!^)\s+/g, "(?: [" + quran_symbols + "])* ");
 
     if (config.searchFromBeginning && config.searchOnEnd) {
         text = '^ ' + text.trim() + ' $';  // trims text and adds space after ^ and before $
@@ -132,6 +138,12 @@ function getRegexPatternForString(text, config) {
     // ignore the first and the last spaces to allow matching the direct next word
     text = text.replace(/^ /, "(?<= )");
     text = text.replace(/ $/, "(?= )");
+
+    // The same word language, with one unambiguous character class after the
+    // first letter. Expand after the user-facing search syntax is translated.
+    var wordPattern = kul_huroof_pattern + kul_huroof_pattern.slice(0, -1) + kul_alharakat + ']*';
+    text = text.replace(/\uE000/g, '(?:' + wordPattern + ')');
+    text = text.replace(/\uE001/g, '(?:' + wordPattern + ')?');
 
     try {
         text = new RegExp(text, regex_flags);
@@ -476,6 +488,9 @@ myApp.controller('AyatSearchController', function ($scope, $window, $http, $rout
         excludePartOfWords = excludePartOfWords !== 'false';
     }
     $scope.searchConfig.excludePartOfWords = excludePartOfWords;
+    var savedWordMatch = $location.search().word_match;
+    $scope.searchConfig.wordMatch = QuranQueryBuilder.wordModes.some(function (option) { return option.value === savedWordMatch; })
+        ? savedWordMatch : (excludePartOfWords ? 'whole' : 'contains');
 
     // Number of items to load initially
     const initialLoadCount = 200;
@@ -775,6 +790,10 @@ myApp.controller('AyatSearchController', function ($scope, $window, $http, $rout
     var nextBlockId = 0;
     $scope.blockTypes = QuranQueryBuilder.types;
     $scope.harakahOptions = QuranQueryBuilder.marks;
+    $scope.letterOptions = QuranQueryBuilder.alphabet;
+    $scope.repetitionOptions = QuranQueryBuilder.repetitions;
+    $scope.wordMatchOptions = QuranQueryBuilder.wordModes;
+    $scope.blockPreview = QuranQueryBuilder.preview;
     $scope.newBlockType = 'text';
     $scope.builderError = '';
     $scope.queryEdited = false;
@@ -790,7 +809,7 @@ myApp.controller('AyatSearchController', function ($scope, $window, $http, $rout
         }
         if (!blocks) blocks = QuranQueryBuilder.parse(query);
         $scope.savedQueryOnly = !blocks;
-        $scope.queryBlocks = blocks || [];
+        $scope.queryBlocks = QuranQueryBuilder.normalise(blocks || []);
         $scope.queryBlocks.forEach(function (block) { block.id = ++nextBlockId; });
     }
     restoreBuilder(initSearchStr);
@@ -809,8 +828,14 @@ myApp.controller('AyatSearchController', function ($scope, $window, $http, $rout
             if (element) element.focus();
         }, 0, false);
     }
-    $scope.addBlock = function () {
-        var block = QuranQueryBuilder.create($scope.newBlockType);
+    $scope.addBlock = function (requestedType) {
+        var type = requestedType || $scope.newBlockType;
+        var block = QuranQueryBuilder.create(type);
+        var onlyBlock = $scope.queryBlocks.length === 1 && $scope.queryBlocks[0];
+        if (onlyBlock && onlyBlock.type === 'text' && (!onlyBlock.value.trim() || type === 'context' || type === 'between')) {
+            if (type === 'context' || type === 'between') block.value = onlyBlock.value;
+            $scope.queryBlocks = [];
+        }
         var previous = $scope.queryBlocks[$scope.queryBlocks.length - 1];
         if (block.type === 'text' && previous && previous.type === 'text') block.join = 'space';
         block.id = ++nextBlockId;
@@ -819,10 +844,20 @@ myApp.controller('AyatSearchController', function ($scope, $window, $http, $rout
         focusBlock(block.id);
     };
     $scope.changeBlockType = function (block) {
-        block.value = '';
-        block.mark = '';
-        block.count = 1;
+        var value = ['text', 'context', 'between'].includes(block.type) ? block.value : '';
+        Object.assign(block, QuranQueryBuilder.create(block.type, value), {join: block.join});
         $scope.builderChanged();
+    };
+    $scope.wordMatchChanged = function () {
+        $scope.searchConfig.excludePartOfWords = $scope.searchConfig.wordMatch === 'whole';
+        $scope.builderChanged();
+    };
+    $scope.wordMatchHint = function () {
+        return $scope.wordMatchOptions.find(function (option) { return option.value === $scope.searchConfig.wordMatch; }).hint;
+    };
+    $scope.canConnect = function (index) {
+        var parts = ['text', 'letter', 'letters'];
+        return index > 0 && parts.includes($scope.queryBlocks[index].type) && parts.includes($scope.queryBlocks[index - 1].type);
     };
     $scope.moveBlock = function (index, direction) {
         var destination = index + direction;
@@ -865,7 +900,7 @@ myApp.controller('AyatSearchController', function ($scope, $window, $http, $rout
         $scope.userSearchQuery = query;
         $scope.builderError = '';
         $scope.queryEdited = false;
-        $scope.searchConfig = {searchFromBeginning: false, searchOnEnd: false, excludePartOfWords: false};
+        $scope.searchConfig = {searchFromBeginning: false, searchOnEnd: false, excludePartOfWords: false, wordMatch: 'contains'};
         $scope.shouldRemoveLastHarakah = false;
         $scope.useResults = {};
         $scope.useSuwar = {};
@@ -885,7 +920,11 @@ myApp.controller('AyatSearchController', function ($scope, $window, $http, $rout
         startSearchingByEnteredText(compiled.query);
         $scope.queryEdited = false;
         var blocks = $scope.queryBlocks.map(function (block) {
-            return {type: block.type, value: block.value, join: block.join, mark: block.mark, count: block.count};
+            return {
+                type: block.type, value: block.value, join: block.join, mark: block.mark, shadda: block.shadda,
+                letterMode: block.letterMode, repetition: block.repetition, count: block.count,
+                direction: block.direction, endValue: block.endValue
+            };
         });
         $location.search("s", compiled.query);
         $location.search("qb", JSON.stringify(blocks));
@@ -893,6 +932,7 @@ myApp.controller('AyatSearchController', function ($scope, $window, $http, $rout
         $location.search("search_only_from_beginning", $scope.searchConfig.searchFromBeginning);
         $location.search("search_only_on_end", $scope.searchConfig.searchOnEnd);
         $location.search("exclude_part_of_words", $scope.searchConfig.excludePartOfWords);
+        $location.search("word_match", $scope.searchConfig.wordMatch);
         $location.search("filter_results", "");
         $location.search("filter_suwar", "");
     };
