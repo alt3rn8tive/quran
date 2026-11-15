@@ -30,21 +30,65 @@
                             <input type="text" class="block-text" ng-model="block.value" ng-change="builderChanged()" ng-trim="false"
                                    placeholder="مثلاً: رحمة أو جِن" aria-describedby="block-hint-{{block.id}}" autocomplete="off"/>
                         </label>
-                        <label class="block-field" ng-if="block.type === 'letter'">
-                            <span>حركة الحرف</span>
-                            <select ng-model="block.mark" ng-change="builderChanged()">
-                                <option ng-repeat="mark in harakahOptions" value="{{mark.value}}">{{mark.label}}</option>
-                                <option ng-if="block.mark.length > 1" value="{{block.mark}}">الحركات المحفوظة</option>
-                            </select>
+                        <div ng-if="block.type === 'letter'" class="letter-controls">
+                            <div class="block-control-grid">
+                                <label class="block-field">
+                                    <span>الحرف المطلوب</span>
+                                    <select ng-model="block.letterMode" ng-change="builderChanged()">
+                                        <option value="any">أي حرف</option><option value="specific">حرف محدد</option>
+                                    </select>
+                                </label>
+                                <label class="block-field" ng-if="block.letterMode === 'specific'">
+                                    <span>اختر الحرف</span>
+                                    <select ng-model="block.value" ng-change="builderChanged()" ng-options="letter for letter in letterOptions">
+                                        <option value="">اختر الحرف</option>
+                                    </select>
+                                </label>
+                                <label class="block-field">
+                                    <span>حركة الحرف</span>
+                                    <select ng-model="block.mark" ng-change="builderChanged()">
+                                        <option ng-repeat="mark in harakahOptions" value="{{mark.value}}">{{mark.label}}</option>
+                                        <option ng-if="block.mark.length > 1" value="{{block.mark}}">الحركات المحفوظة</option>
+                                    </select>
+                                </label>
+                            </div>
+                            <label class="shadda-control"><input type="checkbox" ng-model="block.shadda" ng-change="builderChanged()"/> مع شدة</label>
+                        </div>
+                        <label class="block-field" ng-if="block.type === 'letters'">
+                            <span>عدد الحروف غير المحددة</span>
+                            <select ng-model="block.repetition" ng-options="option.value as option.label for option in repetitionOptions" ng-change="builderChanged()"></select>
                         </label>
+                        <div ng-if="block.type === 'context'" class="surrounding-controls">
+                            <label class="block-field">
+                                <span>العبارة المعروفة</span>
+                                <input type="text" ng-model="block.value" ng-change="builderChanged()" placeholder="مثلاً: الله" autocomplete="off"/>
+                            </label>
+                            <div class="block-control-grid">
+                                <label class="block-field">
+                                    <span>الكلمات التي تريد اكتشافها</span>
+                                    <select ng-model="block.direction" ng-change="builderChanged()"><option value="after">بعد العبارة</option><option value="before">قبل العبارة</option></select>
+                                </label>
+                                <label class="block-field">
+                                    <span>عدد الكلمات</span>
+                                    <input type="number" min="1" max="20" step="1" ng-model="block.count" ng-change="builderChanged()"/>
+                                </label>
+                            </div>
+                            <p class="field-hint">ستجد الكلمات المختارة مع أعداد تكرارها في قائمة النتائج، والآيات الكاملة بجانبها.</p>
+                        </div>
+                        <div ng-if="block.type === 'between'" class="between-controls">
+                            <label class="block-field"><span>العبارة الأولى</span><input type="text" ng-model="block.value" ng-change="builderChanged()" placeholder="مثلاً: إنما" autocomplete="off"/></label>
+                            <p class="gap-description">كلمة واحدة أو أكثر بين العبارتين، في الآية نفسها</p>
+                            <label class="block-field"><span>العبارة الثانية</span><input type="text" ng-model="block.endValue" ng-change="builderChanged()" placeholder="مثلاً: هو" autocomplete="off"/></label>
+                        </div>
                         <label class="block-field" ng-if="block.type === 'capture'">
                             <span>عدد الكلمات المتتابعة</span>
                             <input type="number" min="1" max="20" step="1" ng-model="block.count" ng-change="builderChanged()"/>
                         </label>
-                        <label class="block-connection" ng-if="$index > 0 && (block.type === 'text' || block.type === 'letter' || block.type === 'letters' || block.type === 'optional') && (queryBlocks[$index - 1].type === 'text' || queryBlocks[$index - 1].type === 'letter' || queryBlocks[$index - 1].type === 'letters' || queryBlocks[$index - 1].type === 'optional')">
+                        <label class="block-connection" ng-if="canConnect($index)">
                             <span>علاقته بالجزء السابق</span>
                             <select ng-model="block.join" ng-change="builderChanged()"><option value="attached">متصل به دون مسافة</option><option value="space">بعده بمسافة</option></select>
                         </label>
+                        <div class="letter-preview" ng-if="block.type === 'letter'"><span>معاينة الحرف:</span> <strong>{{blockPreview(block)}}</strong></div>
                     </div>
                     <div class="block-actions" role="group" aria-label="ترتيب الجزء {{$index + 1}} أو حذفه">
                         <button type="button" ng-click="moveBlock($index, -1)" ng-disabled="$first" aria-label="نقل الجزء {{$index + 1}} إلى الأعلى" title="إلى الأعلى">↑</button>
@@ -60,6 +104,24 @@
                     <select id="new-block-type" ng-model="newBlockType" ng-options="type.value as type.label for type in blockTypes"></select>
                     <button type="button" ng-click="addBlock()">إضافة جزء</button>
                 </div>
+            </div>
+            <div class="search-tools" aria-label="أدوات الكلمات والعبارات">
+                <button type="button" ng-click="addBlock('context')">اكتشف كلمات قبل عبارة أو بعدها</button>
+                <button type="button" ng-click="addBlock('between')">ابحث عن عبارتين بينهما كلمات</button>
+            </div>
+            <fieldset class="word-match-controls">
+                <legend>مطابقة الكلمة أو العبارة</legend>
+                <div class="word-match-choices">
+                    <label ng-repeat="option in wordMatchOptions" ng-class="{selected: searchConfig.wordMatch === option.value}">
+                        <input type="radio" name="word-match" ng-model="searchConfig.wordMatch" ng-value="option.value" ng-change="wordMatchChanged()"/> {{option.label}}
+                    </label>
+                </div>
+                <p class="field-hint">{{wordMatchHint()}}</p>
+            </fieldset>
+            <div class="pattern-preview" ng-if="queryBlocks.length" aria-label="معاينة النمط">
+                <span class="preview-label">النمط الذي تبحث عنه</span>
+                <ol><li ng-repeat="part in queryBlocks track by part.id">{{blockPreview(part)}}</li></ol>
+                <p class="field-hint" ng-if="queryBlocks.length > 1">الأجزاء المتصلة تكوّن كلمة واحدة؛ المسافات وأجزاء الكلمات تفصل بينها.</p>
             </div>
             <p class="builder-error" ng-if="builderError" role="alert">{{builderError}}</p>
             <div class="builder-submit">
@@ -88,11 +150,6 @@
             </label>
 
             <label>
-                <input type="checkbox" ng-model="searchConfig.excludePartOfWords" ng-change="builderChanged()"/>
-                <span>كلمات كاملة فقط</span>
-            </label>
-
-            <label>
                 <input type="checkbox" ng-model="searchConfig.searchFromBeginning" ng-change="builderChanged()"/>
                 <span>في بداية الآية فقط</span>
             </label>
@@ -114,7 +171,7 @@
     <!--<label for="hide-sidebar">خيارات البحث</label>-->
 
     <div id="empty-search-results" ng-if="isSearchDone && !pagedItems.length">
-        لم نجد نتائج. جرّب إزالة بعض الحركات أو إلغاء «كلمات كاملة فقط» لتوسيع البحث. <a href="#!/search-features">اطّلع على أمثلة البحث</a>
+        لم نجد نتائج. جرّب إزالة بعض الحركات أو اختيار «يحتوي على» لتوسيع البحث. <a href="#!/search-features">اطّلع على أمثلة البحث</a>
     </div>
 
     <section class="left" ng-show="isSearchDone && pagedItems.length" style="border-right:1px">
