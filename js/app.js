@@ -64,7 +64,7 @@ function addAfterEachLetter(add_str, str) {
 
     var chars_arr = str.split("");
 
-    var ignored_chars = '\uE002\uE003:<>!{}+-.(|)[]*?؟$^ ْ' + numbers + kul_alharakat;
+    var ignored_chars = '\uE002\uE003\uE006\uE010\uE011\uE012\uE013\uE014\uE015\uE016\uE017\uE018\uE019\uE01A:<>!{}+-.(|)[]*?؟$^ ْ' + numbers + kul_alharakat;
     const ignored_chars_arr = ignored_chars.split("");
     const count_chars = chars_arr.length;
     for (var i = 0; i < count_chars; i++) {
@@ -83,6 +83,12 @@ function getRegexPatternForString(text, config) {
     // Protect per-block boundaries from whitespace and letter expansion.
     // Expand them after the remaining search language has been translated.
     text = text.replace(/\(\?<= \)/g, '\uE002').replace(/\(\?= \)/g, '\uE003');
+    // Protect numeric repetition from letter expansion and the older syntax
+    // that interprets bare numbers as backreferences.
+    text = text.replace(/\(\?:ـ\)(?=\{\d+(?:,\d+)?\})/g, '\uE006');
+    text = text.replace(/\{\d+(?:,\d+)?\}/g, function (quantifier) {
+        return quantifier.replace(/[\d,]/g, function (character) { return character === ',' ? '\uE01A' : String.fromCharCode(0xE010 + Number(character)); });
+    });
 
     text = text.replace(/\*/g,"**");
 
@@ -126,16 +132,20 @@ function getRegexPatternForString(text, config) {
         text = text.trimEnd() + " ";
     }
 
+    // Outer word boundaries are assertions, not separators to consume. In
+    // particular, do not include a following pause mark in the matched word.
+    text = text.replace(/^ /, '\uE002').replace(/ $/, '\uE003');
+
     // A single optional path avoids exponentially many identical empty
     // separator matches when a word-gap spans a long verse.
     text = text.replace(/(?!^)\s+/g, "(?: [" + quran_symbols + "])* ");
 
     if (config.searchFromBeginning && config.searchOnEnd) {
-        text = '^ ' + text.trim() + ' $';  // trims text and adds space after ^ and before $
+        text = '^ ' + text.trim() + '(?=(?: [' + quran_symbols + '])* $)';  // trims text and adds space after ^ and before $
     } else if (config.searchFromBeginning) {
         text = '^ ' + text.trimStart();  // trims starting space from text and adds space after ^
     } else if (config.searchOnEnd) {
-        text = text.trimEnd() + ' $';  // trims ending space from text and adds space before $
+        text = text.trimEnd() + '(?=(?: [' + quran_symbols + '])* $)';  // trims ending space from text and adds space before $
     }
 
     // ignore the first and the last spaces to allow matching the direct next word
@@ -148,6 +158,8 @@ function getRegexPatternForString(text, config) {
     text = text.replace(/\uE000/g, '(?:' + wordPattern + ')');
     text = text.replace(/\uE001/g, '(?:' + wordPattern + ')?');
     text = text.replace(/\uE002/g, '(?<= )').replace(/\uE003/g, '(?= )');
+    text = text.replace(/\uE006/g, '(?:[ا-يآؤئإأٱء]' + optional_kul_alharakat + ')');
+    text = text.replace(/[\uE010-\uE01A]/g, function (character) { return character === '\uE01A' ? ',' : String(character.charCodeAt(0) - 0xE010); });
 
     try {
         text = new RegExp(text, regex_flags);
@@ -273,6 +285,32 @@ function highlightText(input, regex, highlightOnlyGroups) {
     }
 
     return highlightedText;
+}
+
+// Render only accepted occurrences when a word-level exclusion removes some
+// matches from a verse. Merge touching ranges so the markup stays balanced.
+function highlightRanges(text, ranges) {
+    var merged = [];
+    ranges.slice().sort(function (a, b) { return a[0] - b[0]; }).forEach(function (range) {
+        var previous = merged[merged.length - 1];
+        if (previous && range[0] <= previous[1]) previous[1] = Math.max(previous[1], range[1]);
+        else merged.push(range.slice());
+    });
+    var escape = function (value) { return value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); };
+    var result = '', end = 0;
+    merged.forEach(function (range) {
+        result += escape(text.slice(end, range[0])) + "<span class='highlightedText'>" + escape(text.slice(range[0], range[1])) + '</span>';
+        end = range[1];
+    });
+    return result + escape(text.slice(end));
+}
+
+function excludedBy(rules, scope, text) {
+    return rules.some(function (rule) {
+        if (rule.scope !== scope) return false;
+        rule.pattern.lastIndex = 0;
+        return rule.pattern.test(text);
+    });
 }
 
 function getTrueKeys(input) {
@@ -518,52 +556,40 @@ myApp.controller('AyatSearchController', function ($scope, $window, $http, $rout
         }
     };
 
+    $scope.queryExclusions = [];
     var matchAyat = function (newValue) {
-        var filtered_ayat = all_ayat.filter(function (item) {
-            var foundStr = item["text"].match($scope.searchQueryRegex);
-            return foundStr !== null;
-        });
-
-        return filtered_ayat.map(function (ayah) {
-
-            ayah["exact_match"] = [];
-            ayah["matched"] = [];
-            ayah["text_with_highlight"] = ayah["text"];
-
-            var match = null;
-            while (match = $scope.searchQueryRegex.exec(ayah["text"])) {
-                var foundStr = match;
-
-                if ((foundStr + "").trim() == "") {
-                    if ($scope.searchQueryRegex.lastIndex == foundStr.index) {
-                        // prevent infinite loop
-                        $scope.searchQueryRegex.lastIndex += 1;
-                    }
+        var rules = $scope.queryExclusions;
+        var wordRules = rules.some(function (rule) { return rule.scope === 'word'; });
+        return all_ayat.filter(function (item) {
+            return item.text.match($scope.searchQueryRegex) !== null && !excludedBy(rules, 'verse', item.text);
+        }).map(function (source) {
+            var ayah = Object.assign({}, source);
+            ayah.exact_match = [];
+            ayah.matched = [];
+            var ranges = [], match;
+            $scope.searchQueryRegex.lastIndex = 0;
+            while ((match = $scope.searchQueryRegex.exec(ayah.text))) {
+                if (!match[0].trim()) {
+                    if ($scope.searchQueryRegex.lastIndex === match.index) $scope.searchQueryRegex.lastIndex++;
                     continue;
                 }
-
-                let wholeMatchedPart = foundStr[0];
-                // remove the exact match if there is a captured group or more
-                if (foundStr.length > 1) {
-                    foundStr.shift();
-                }
-
-                //item["text"].slice(foundStr.index,foundStr.index+foundStr[1].length)
-
-                ayah["exact_match"] = ayah["exact_match"].concat(foundStr); //remove first matching result
-                ayah["matched"] = ayah["matched"].concat(foundStr.map(function (str) {
-                    if ($scope.shouldRemoveLastHarakah) {
-                        return removeHarakatOfLastHarf(str);
-                    } else {
-                        return str;
-                    }
+                var offset = match.length > 1 ? 1 : 0;
+                var found = match.slice(offset).filter(function (value, index) {
+                    if (typeof value !== 'string' || !value.trim()) return false;
+                    if (!wordRules) return true;
+                    var range = match.indices[index + offset];
+                    if (!range || excludedBy(rules, 'word', QuranQueryBuilder.wordContext(ayah.text, range))) return false;
+                    ranges.push(range);
+                    return true;
+                });
+                ayah.exact_match = ayah.exact_match.concat(found);
+                ayah.matched = ayah.matched.concat(found.map(function (value) {
+                    return $scope.shouldRemoveLastHarakah ? removeHarakatOfLastHarf(value) : value;
                 }));
             }
-
-            ayah["text_with_highlight"] = highlightText(ayah["text_with_highlight"], $scope.searchQueryRegex);
-
+            ayah.text_with_highlight = wordRules ? highlightRanges(ayah.text, ranges) : highlightText(ayah.text, $scope.searchQueryRegex);
             return ayah;
-        });
+        }).filter(function (ayah) { return ayah.matched.length > 0; });
     };
 
     $scope.$watch('searchQueryRegex', function (newValue) {
@@ -581,6 +607,7 @@ myApp.controller('AyatSearchController', function ($scope, $window, $http, $rout
         $scope.sortBy = "counts";
         $scope.changeCountsAsPerFilter = false;
         $scope.isSearchDone = true;
+        filterListener();
         $scope.scrollToMainContainer();
 
         // Utility functions
@@ -801,9 +828,18 @@ myApp.controller('AyatSearchController', function ($scope, $window, $http, $rout
     $scope.textMatchOptions = QuranQueryBuilder.textModes;
     $scope.symbolOptions = QuranQueryBuilder.symbols;
     $scope.symbolInfo = QuranQueryBuilder.symbolInfo;
+    $scope.listMatchOptions = QuranQueryBuilder.listModes;
+    $scope.gapOptions = QuranQueryBuilder.gapModes;
+    $scope.distanceDescription = QuranQueryBuilder.distanceDescription;
     $scope.newBlockType = 'text';
     $scope.builderError = '';
     $scope.queryEdited = false;
+
+    function setExclusions(compiled) {
+        $scope.queryExclusions = (compiled.exclusions || []).map(function (rule) {
+            return {scope: rule.scope, pattern: getRegexPatternForString(rule.query, {wordMatch: 'contains'})};
+        });
+    }
 
     function restoreBuilder(query) {
         var blocks = null;
@@ -818,6 +854,7 @@ myApp.controller('AyatSearchController', function ($scope, $window, $http, $rout
         $scope.savedQueryOnly = !blocks;
         $scope.queryBlocks = QuranQueryBuilder.normalise(blocks || []);
         $scope.queryBlocks.forEach(function (block) { block.id = ++nextBlockId; });
+        setExclusions(QuranQueryBuilder.compile($scope.queryBlocks));
     }
     restoreBuilder(initSearchStr);
 
@@ -839,11 +876,12 @@ myApp.controller('AyatSearchController', function ($scope, $window, $http, $rout
         var type = requestedType || $scope.newBlockType;
         var block = QuranQueryBuilder.create(type);
         var onlyBlock = $scope.queryBlocks.length === 1 && $scope.queryBlocks[0];
-        if (onlyBlock && onlyBlock.type === 'text' && (!onlyBlock.value.trim() || type === 'context' || type === 'between')) {
+        if (onlyBlock && onlyBlock.type === 'text' && type !== 'exclude' && (!onlyBlock.value.trim() || ['context', 'between', 'alternatives'].includes(type))) {
             if (type === 'context' || type === 'between') block.value = onlyBlock.value;
+            if (type === 'alternatives') block.choices[0].value = onlyBlock.value;
             $scope.queryBlocks = [];
         }
-        var previous = $scope.queryBlocks[$scope.queryBlocks.length - 1];
+        var previous = $scope.queryBlocks.filter(function (part) { return part.type !== 'exclude'; }).slice(-1)[0];
         if (block.type === 'text' && previous && previous.type === 'text') block.join = 'space';
         block.id = ++nextBlockId;
         $scope.queryBlocks.push(block);
@@ -853,6 +891,15 @@ myApp.controller('AyatSearchController', function ($scope, $window, $http, $rout
     $scope.changeBlockType = function (block) {
         var value = ['text', 'context', 'between'].includes(block.type) ? block.value : '';
         Object.assign(block, QuranQueryBuilder.create(block.type, value), {join: block.join});
+        $scope.builderChanged();
+    };
+    $scope.addChoice = function (block) {
+        if (block.choices.length < 10) block.choices.push({value: ''});
+        $scope.builderChanged();
+    };
+    $scope.removeChoice = function (block, index) {
+        var minimum = block.type === 'exclude' ? 1 : 2;
+        if (block.choices.length > minimum) block.choices.splice(index, 1);
         $scope.builderChanged();
     };
     $scope.wordMatchChanged = function () {
@@ -866,9 +913,10 @@ myApp.controller('AyatSearchController', function ($scope, $window, $http, $rout
         return $scope.wordMatchOptions.find(function (option) { return option.value === $scope.searchConfig.wordMatch; }).hint;
     };
     $scope.canConnect = function (index) {
-        var parts = ['text', 'letter', 'letters'];
-        return index > 0 && parts.includes($scope.queryBlocks[index].type) && parts.includes($scope.queryBlocks[index - 1].type)
-            && !QuranQueryBuilder.separates($scope.queryBlocks[index - 1], $scope.queryBlocks[index]);
+        var parts = ['text', 'letter', 'letters', 'alternatives'];
+        var previous = $scope.queryBlocks.slice(0, index).filter(function (part) { return part.type !== 'exclude'; }).slice(-1)[0];
+        return previous && parts.includes($scope.queryBlocks[index].type) && parts.includes(previous.type)
+            && !QuranQueryBuilder.separates(previous, $scope.queryBlocks[index]);
     };
     $scope.moveBlock = function (index, direction) {
         var destination = index + direction;
@@ -924,6 +972,7 @@ myApp.controller('AyatSearchController', function ($scope, $window, $http, $rout
         $scope.builderError = compiled.error || '';
         if (compiled.error) return;
         $scope.userSearchQuery = compiled.query;
+        setExclusions(compiled);
         // Search explicitly even when the URL has not changed (for example,
         // after editing and restoring the same blocks).
         $scope.useResults = {};
@@ -934,7 +983,10 @@ myApp.controller('AyatSearchController', function ($scope, $window, $http, $rout
             return {
                 type: block.type, value: block.value, join: block.join, mark: block.mark, shadda: block.shadda,
                 letterMode: block.letterMode, repetition: block.repetition, count: block.count,
-                direction: block.direction, endValue: block.endValue, matchMode: block.matchMode, symbol: block.symbol, symbolMode: block.symbolMode
+                direction: block.direction, endValue: block.endValue, matchMode: block.matchMode, symbol: block.symbol, symbolMode: block.symbolMode,
+                minCount: block.minCount, maxCount: block.maxCount, letterOptional: block.letterOptional,
+                gapMode: block.gapMode, gapCount: block.gapCount, gapMin: block.gapMin, gapMax: block.gapMax, order: block.order,
+                scope: block.scope, choices: ['alternatives', 'exclude'].includes(block.type) ? block.choices.map(function (choice) { return {value: choice.value}; }) : undefined
             };
         });
         $location.search("s", compiled.query);

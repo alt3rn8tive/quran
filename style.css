@@ -987,3 +987,13 @@ input[type=checkbox] { accent-color: var(--accent); width: 18px; height: 18px; }
 .global-boundary-options { margin: 20px 0; border-top: 1px solid var(--line); padding-top: 12px; }
 .global-boundary-options > summary { font-size: .9rem; }
 .global-boundary-options .word-match-controls { margin-top: 12px; }
+
+.choice-controls select { width: 100%; min-width: 0; }
+.choice-row { display: flex; align-items: flex-end; gap: 8px; margin: 12px 0; }
+.choice-row .block-field { flex: 1; min-width: 0; }
+.choice-row button { margin-bottom: 2px; }
+.exclusion-block { background: #fff9f1; border-color: #e7d4b4; }
+.exclusion-block .block-number { background: #f4e5cb; color: #73531d; }
+.search-tools { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.search-tools button:last-child { grid-column: 1 / -1; }
+@media (max-width: 600px) { .search-tools { grid-template-columns: 1fr; } }
