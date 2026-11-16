@@ -121,6 +121,31 @@ describe('Query builder search integration', function () {
         expect(location.search().s).toBe(query);
         expect(scope.resultsGroup).toEqual(results);
     });
+    it('saves independent text rules and applies them to the real Quran search', function () {
+        var text = QuranQueryBuilder.create('text', 'علم');
+        text.matchMode = 'whole';
+        scope.queryBlocks = [text];
+        scope.searchButtonClicked();
+        root.$digest();
+        expect(scope.filteredAyat.length).toBe(58);
+        expect(JSON.parse(location.search().qb)[0].matchMode).toBe('whole');
+    });
+
+    it('saves symbol capture settings and returns captured words rather than the symbol', function () {
+        var symbol = QuranQueryBuilder.create('symbol');
+        symbol.symbol = 'ۘ';
+        symbol.symbolMode = 'before';
+        symbol.count = 2;
+        scope.queryBlocks = [symbol];
+        scope.searchButtonClicked();
+        root.$digest();
+        expect(scope.resultsGroup.length).toBeGreaterThan(0);
+        expect(scope.resultsGroup.every(function (result) { return result.includes(' ') && !result.includes('ۘ'); })).toBeTrue();
+        var stored = JSON.parse(location.search().qb)[0];
+        expect(stored.symbol).toBe('ۘ');
+        expect(stored.symbolMode).toBe('before');
+        expect(stored.count).toBe(2);
+    });
 });
 
 describe('Letter, word boundary and surrounding-word controls', function () {
@@ -252,5 +277,122 @@ describe('Letter, word boundary and surrounding-word controls', function () {
         ['letters', 'context', 'between'].forEach(function (type) {
             expect(QuranQueryBuilder.preview(part(type))).not.toMatch(/[.*_]/);
         });
+    });
+});
+
+describe('Quran symbols and independent text matching', function () {
+    function block(type, value, options) {
+        return Object.assign(QuranQueryBuilder.create(type, value), options || {});
+    }
+    function regex(blocks, config) {
+        var compiled = QuranQueryBuilder.compile(blocks);
+        expect(compiled.error).toBeUndefined();
+        return getRegexPatternForString(compiled.query, config || {wordMatch: 'contains'});
+    }
+
+    it('applies a whole-word rule to one block without constraining a preceding partial word', function () {
+        var blocks = [block('text', 'رحم'), block('text', 'الله', {matchMode: 'whole'})];
+        expect(regex(blocks).test(' يرحم الله ')).toBeTrue();
+        expect(regex(blocks).test(' يرحم والله ')).toBeFalse();
+        blocks[0].matchMode = 'whole';
+        expect(regex(blocks).test(' يرحم الله ')).toBeFalse();
+        expect(regex(blocks).test(' رحم الله ')).toBeTrue();
+    });
+
+    it('distinguishes per-block partial, whole, start and end matching', function () {
+        var samples = ['علم', 'يعلم', 'علمه', 'يعلمه'];
+        var expected = {
+            contains: [true, true, true, true], whole: [true, false, false, false],
+            starts: [true, false, true, false], ends: [true, true, false, false]
+        };
+        Object.keys(expected).forEach(function (mode) {
+            samples.forEach(function (text, index) {
+                expect(regex([block('text', 'علم', {matchMode: mode})]).test(' ' + text + ' ')).toBe(expected[mode][index]);
+            });
+        });
+    });
+
+    it('joins letter patterns to an open end of a bounded text block', function () {
+        var prefix = [block('text', 'رحم', {matchMode: 'starts'}), block('letters')];
+        expect(regex(prefix).test(' رحمهم ')).toBeTrue();
+        expect(regex(prefix).test(' يرحمهم ')).toBeFalse();
+        var suffix = [block('letter'), block('text', 'رحم', {matchMode: 'ends'})];
+        expect(regex(suffix).test(' يرحم ')).toBeTrue();
+        expect(regex(suffix).test(' يرحمهم ')).toBeFalse();
+    });
+
+    it('matches a complete phrase across pause marks but rejects attached outer letters', function () {
+        var blocks = [block('text', 'كل نفس', {matchMode: 'phrase'})];
+        expect(regex(blocks).test(' كل نفس ')).toBeTrue();
+        expect(regex(blocks).test(' كل ۖ نفس ')).toBeTrue();
+        expect(regex(blocks).test(' وكل نفس ')).toBeFalse();
+        expect(regex(blocks).test(' كل نفسهم ')).toBeFalse();
+        expect(regex(blocks).test(' كل نفس أخرى ')).toBeTrue();
+    });
+
+    it('retains legacy whole-query boundaries alongside individual matching rules', function () {
+        var blocks = [block('text', 'علم', {matchMode: 'whole'})];
+        expect(regex(blocks, {wordMatch: 'whole'}).test(' علم ')).toBeTrue();
+        expect(regex(blocks, {searchFromBeginning: true}).test(' قال علم ')).toBeFalse();
+        expect(regex(blocks, {searchOnEnd: true}).test(' علم قال ')).toBeFalse();
+    });
+
+    it('validates whole words, phrases and search-language injection', function () {
+        [block('text', 'كل نفس', {matchMode: 'whole'}), block('text', 'الله', {matchMode: 'phrase'}),
+            block('text', 'الله', {matchMode: 'invalid'}), block('text', '(?<= )الله')].forEach(function (part) {
+            expect(QuranQueryBuilder.compile([part]).error).toBeTruthy();
+        });
+    });
+
+    it('finds every supported symbol exactly as recorded in the full Quran text', function () {
+        var expected = {'۩': 15, 'ۘ': 22, 'ۙ': 68, 'ۖ': 1682, 'ۗ': 603, 'ۚ': 1972, 'ۛ': 12, 'ۜ': 5};
+        QuranQueryBuilder.symbols.forEach(function (symbol) {
+            var pattern = regex([block('symbol', '', {symbol: symbol.value})]);
+            var count = all_ayat.reduce(function (total, ayah) { return total + (ayah.text.match(pattern) || []).length; }, 0);
+            expect(count).toBe(expected[symbol.value]);
+        });
+    });
+
+    it('captures the requested number of words on either side of a symbol', function () {
+        var text = ' قَالَ رَبِّ ۘ إِنِّي أَعْلَمُ ';
+        var before = regex([block('symbol', '', {symbol: 'ۘ', symbolMode: 'before', count: 2})]);
+        var after = regex([block('symbol', '', {symbol: 'ۘ', symbolMode: 'after', count: 2})]);
+        expect(before.exec(text)[1]).toBe('قَالَ رَبِّ');
+        expect(after.exec(text)[1]).toBe('إِنِّي أَعْلَمُ');
+    });
+
+    it('skips adjacent annotations without counting them as words', function () {
+        var text = ' قال موسى ۜ ۗ هَٰذَا ';
+        expect(regex([block('symbol', '', {symbol: 'ۗ', symbolMode: 'before'})]).exec(text)[1]).toBe('موسى');
+        expect(regex([block('symbol', '', {symbol: 'ۜ', symbolMode: 'after'})]).exec(text)[1]).toBe('هَٰذَا');
+    });
+
+    it('does not invent following words when a symbol ends the verse', function () {
+        var pattern = regex([block('symbol', '', {symbol: '۩', symbolMode: 'after'})]);
+        expect(pattern.test(' وَاسْجُدْ وَاقْتَرِبْ ۩ ')).toBeFalse();
+        expect(regex([block('symbol', '', {symbol: '۩', symbolMode: 'before', count: 2})]).exec(' وَاسْجُدْ وَاقْتَرِبْ ۩ ')[1]).toBe('وَاسْجُدْ وَاقْتَرِبْ');
+    });
+
+    it('combines a whole word and a symbol in one query', function () {
+        var blocks = [block('text', 'رب', {matchMode: 'whole'}), block('symbol', '', {symbol: 'ۘ'})];
+        expect(regex(blocks).test(' رب ۘ ')).toBeTrue();
+        expect(regex(blocks).test(' ورب ۘ ')).toBeFalse();
+        expect(regex(blocks).test(' رب ۙ ')).toBeFalse();
+    });
+
+    it('rejects unsupported symbols and invalid nearby-word choices', function () {
+        [block('symbol', '', {symbol: '۞'}), block('symbol', '', {symbolMode: 'invalid'}),
+            block('symbol', '', {symbolMode: 'before', count: 0}), block('symbol', '', {symbolMode: 'after', count: 1.5})].forEach(function (part) {
+            expect(QuranQueryBuilder.compile([part]).error).toBeTruthy();
+        });
+    });
+
+    it('restores simple symbol links and keeps old text blocks unbounded', function () {
+        var parsed = QuranQueryBuilder.parse('۩');
+        expect(parsed[0].type).toBe('symbol');
+        expect(parsed[0].symbol).toBe('۩');
+        var older = QuranQueryBuilder.normalise([{type: 'text', value: 'الله'}]);
+        expect(older[0].matchMode).toBe('contains');
+        expect(QuranQueryBuilder.compile(older).query).toBe('الله');
     });
 });
