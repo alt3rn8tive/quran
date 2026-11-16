@@ -396,3 +396,172 @@ describe('Quran symbols and independent text matching', function () {
         expect(QuranQueryBuilder.compile(older).query).toBe('الله');
     });
 });
+
+describe('Precise counts, distances and alternative choices', function () {
+    function part(type, value, options) { return Object.assign(QuranQueryBuilder.create(type, value), options || {}); }
+    function regex(blocks, mode) {
+        var compiled = QuranQueryBuilder.compile(blocks);
+        expect(compiled.error).toBeUndefined();
+        return getRegexPatternForString(compiled.query, {wordMatch: mode || 'whole'});
+    }
+    it('counts letters rather than harakat, shadda or dagger alif', function () {
+        var exact = [part('letters', '', {repetition: 'exact', count: 3})];
+        expect(regex(exact).test(' عِلْم ')).toBeTrue();
+        expect(regex(exact).test(' هَٰذَا ')).toBeTrue();
+        expect(regex(exact).test(' عِلْمه ')).toBeFalse();
+        expect(regex([part('letters', '', {repetition: 'exact', count: 4})]).test(' هَٰذَا ')).toBeFalse();
+        expect(regex([part('letters', '', {repetition: 'exact', count: 2})]).test(' ضُرّ ')).toBeTrue();
+    });
+    it('keeps following pause annotations out of whole-word letter-count results', function () {
+        var blocks = [part('letters', '', {repetition: 'exact', count: 3})];
+        expect(regex(blocks).exec(' عِلْم ۖ ')[0]).toBe('عِلْم');
+    });
+
+    it('matches both bounds of a letter range and rejects lengths outside it', function () {
+        var blocks = [part('letters', '', {repetition: 'range', minCount: 2, maxCount: 4})];
+        ['من', 'علم', 'كتاب'].forEach(function (value) { expect(regex(blocks).test(' ' + value + ' ')).toBeTrue(); });
+        ['ا', 'مكتبة'].forEach(function (value) { expect(regex(blocks).test(' ' + value + ' ')).toBeFalse(); });
+    });
+    it('preserves multi-digit counts instead of interpreting them as backreferences', function () {
+        var blocks = [part('letters', '', {repetition: 'exact', count: 12})];
+        expect(regex(blocks).test(' ' + 'ا'.repeat(12) + ' ')).toBeTrue();
+        expect(regex(blocks).test(' ' + 'ا'.repeat(11) + ' ')).toBeFalse();
+    });
+    it('makes a selected letter and its harakah optional as a unit', function () {
+        var blocks = [part('letter', 'و', {letterMode: 'specific', mark: 'َ', letterOptional: true}), part('text', 'الله')];
+        expect(regex(blocks).test(' الله ')).toBeTrue();
+        expect(regex(blocks).test(' وَالله ')).toBeTrue();
+        expect(regex(blocks).test(' وِالله ')).toBeFalse();
+        expect(regex(blocks).test(' وَوَالله ')).toBeFalse();
+    });
+    it('distinguishes adjacency, exact distances and inclusive word-distance ranges', function () {
+        function search(options, text) { return regex([part('between', 'قال', Object.assign({endValue: 'رب'}, options))]).test(' ' + text + ' '); }
+        expect(search({gapMode: 'adjacent'}, 'قال رب')).toBeTrue();
+        expect(search({gapMode: 'adjacent'}, 'قال موسى رب')).toBeFalse();
+        expect(search({gapMode: 'exact', gapCount: 0}, 'قال رب')).toBeTrue();
+        expect(search({gapMode: 'exact', gapCount: 2}, 'قال موسى يا رب')).toBeTrue();
+        expect(search({gapMode: 'exact', gapCount: 2}, 'قال موسى رب')).toBeFalse();
+        expect(search({gapMode: 'range', gapMin: 1, gapMax: 2}, 'قال موسى رب')).toBeTrue();
+        expect(search({gapMode: 'range', gapMin: 1, gapMax: 2}, 'قال موسى يا رب')).toBeTrue();
+        expect(search({gapMode: 'range', gapMin: 1, gapMax: 2}, 'قال رب')).toBeFalse();
+        expect(search({gapMode: 'range', gapMin: 1, gapMax: 2}, 'قال موسى يا أيها رب')).toBeFalse();
+    });
+    it('supports either phrase order without adding captured groups', function () {
+        var blocks = [part('between', 'قال', {endValue: 'رب', gapMode: 'exact', gapCount: 1, order: 'either'})];
+        expect(regex(blocks).test(' قال موسى رب ')).toBeTrue();
+        expect(regex(blocks).test(' رب موسى قال ')).toBeTrue();
+        expect(regex(blocks).exec(' رب موسى قال ').length).toBe(1);
+        blocks[0].order = 'ordered';
+        expect(regex(blocks).test(' رب موسى قال ')).toBeFalse();
+    });
+    it('does not count pause marks as intervening words', function () {
+        expect(regex([part('between', 'قال', {endValue: 'رب', gapMode: 'adjacent'})]).test(' قال ۖ رب ')).toBeTrue();
+        expect(regex([part('between', 'قال', {endValue: 'رب', gapMode: 'exact', gapCount: 2})]).test(' قال موسى ۖ يا رب ')).toBeTrue();
+    });
+    it('matches a full-Quran exact distance equivalently to explicit unknown-word blocks', function () {
+        var generated = regex([part('between', 'إنما', {endValue: 'هو', gapMode: 'exact', gapCount: 2})], 'contains');
+        var explicit = getRegexPatternForString('إنما . . هو', {wordMatch: 'contains'});
+        var ids = function (pattern) { return all_ayat.filter(function (ayah) { return ayah.text.match(pattern); }).map(function (ayah) { return ayah.ID; }); };
+        expect(ids(generated)).toEqual(ids(explicit));
+    });
+    it('matches whole alternative words and phrases without capturing groups', function () {
+        var blocks = [part('alternatives', '', {choices: [{value: 'موسى'}, {value: 'يا رب'}]})];
+        expect(regex(blocks).test(' مُوسَىٰ ')).toBeTrue();
+        expect(regex(blocks).test(' يا رب ')).toBeTrue();
+        expect(regex(blocks).test(' وموسى ')).toBeFalse();
+        expect(regex(blocks).exec(' يا رب ').length).toBe(1);
+    });
+    it('can attach literal alternatives to the remaining letter pattern', function () {
+        var blocks = [part('alternatives', '', {matchMode: 'contains', choices: [{value: 'م'}, {value: 'س'}]}), part('text', 'اء')];
+        expect(regex(blocks).test(' ماء ')).toBeTrue();
+        expect(regex(blocks).test(' ساء ')).toBeTrue();
+        expect(regex(blocks).test(' لاء ')).toBeFalse();
+    });
+    it('keeps exclusion clauses out of the positive pattern and word spacing', function () {
+        var filter = part('exclude', '', {choices: [{value: 'فرعون'}]});
+        var clauses = [part('text', 'م'), filter, part('text', 'اء')];
+        var compiled = QuranQueryBuilder.compile(clauses);
+        expect(compiled.query).toBe('ماء');
+        expect(compiled.exclusions[0].scope).toBe('verse');
+        expect(QuranQueryBuilder.compile([filter]).error).toBeTruthy();
+    });
+    it('does not include neighbouring words when a match contains outer spaces', function () {
+        var text = ' يعلمون علم يعلمون ';
+        var start = text.indexOf(' علم ');
+        expect(QuranQueryBuilder.wordContext(text, [start, start + ' علم '.length])).toBe(' علم ');
+    });
+
+    it('validates numbers, ranges, list entries and exclusion scope', function () {
+        var invalid = [part('letters', '', {repetition: 'exact', count: null}), part('letters', '', {repetition: 'exact', count: 1.5}),
+            part('letters', '', {repetition: 'exact', count: 51}), part('letters', '', {repetition: 'range', minCount: 4, maxCount: 2}),
+            part('between', 'قال', {endValue: 'رب', gapMode: 'range', gapMin: 3, gapMax: 1}),
+            part('between', 'قال', {endValue: 'رب', gapMode: 'exact', gapCount: null}),
+            part('between', 'قال', {endValue: 'رب', gapMode: 'exact', gapCount: -1}),
+            part('between', 'قال', {endValue: 'رب', order: 'invalid'}),
+            part('alternatives', '', {choices: [{value: 'موسى'}]}), part('alternatives', '', {choices: [{value: 'موسى'}, {value: '.*'}]}),
+            part('exclude', '', {scope: 'invalid', choices: [{value: 'فرعون'}]})];
+        invalid.forEach(function (block) { expect(QuranQueryBuilder.compile([part('word'), block]).error).toBeTruthy(); });
+    });
+});
+
+describe('Exclusion scopes, counts and highlights', function () {
+    var original, root, scope, location, controller;
+    function part(type, value, options) { return Object.assign(QuranQueryBuilder.create(type, value), options || {}); }
+    function run(blocks) { scope.queryBlocks = blocks; scope.searchButtonClicked(); root.$digest(); }
+    function ids() { return scope.foundAyat.map(function (ayah) { return ayah.ID; }); }
+    beforeEach(angular.mock.module('myApp'));
+    beforeEach(angular.mock.inject(function ($controller, $rootScope, $httpBackend, $location) {
+        original = all_ayat;
+        all_ayat = [
+            ' قَالَ مُوسَىٰ وَقَالَ فِرْعَوْنُ ', ' قَالَ مُوسَىٰ ', ' قَالَ عِيسَىٰ ',
+            ' هُمْ يَعْلَمُونَ وَاللهُ يَعْلَمُ ', ' اللَّهُ لَا يَعْلَمُونَ وَاللَّهُ لَا يَعْلَمُ ',
+            ' قَالَ فِرْعَوْنُ مُوسَىٰ ', ' هُمْ يَعْلَمُونَ '
+        ].map(function (text, i) { return {ID: i + 1, sura_id: 1, verse_id: i + 1, text: text}; });
+        root = $rootScope; location = $location; controller = $controller;
+        location.path('/search').search({});
+        scope = root.$new(); controller('AyatSearchController', {$scope: scope});
+        $httpBackend.whenGET('view/search.html').respond('');
+    }));
+    afterEach(function () { all_ayat = original; });
+
+    it('excludes whole verses even when the forbidden word precedes the positive match', function () {
+        var choices = part('alternatives', '', {choices: [{value: 'موسى'}, {value: 'عيسى'}]});
+        run([choices]); expect(ids()).toEqual([1, 2, 3, 6]);
+        run([choices, part('exclude', '', {choices: [{value: 'فرعون'}]})]);
+        expect(ids()).toEqual([2, 3]);
+        expect(scope.resultsGroup.length).toBe(2);
+    });
+    it('checks the full enclosing word when the positive match is only a substring', function () {
+        run([part('text', 'علم'), part('exclude', '', {scope: 'word', matchMode: 'ends', choices: [{value: 'ون'}]})]);
+        expect(ids()).toEqual([4, 5]);
+        var verse = scope.foundAyat[0];
+        expect(verse.matched.length).toBe(1);
+        expect((verse.text_with_highlight.match(/class='highlightedText'/g) || []).length).toBe(1);
+        expect(verse.text_with_highlight).toContain('يَعْلَمُونَ');
+        expect(scope.foundAyat.some(function (ayah) { return ayah.ID === 7; })).toBeFalse();
+    });
+    it('filters captured results individually while keeping allowed results in the same verse', function () {
+        run([part('context', 'الله', {count: 2}), part('exclude', '', {scope: 'word', matchMode: 'ends', choices: [{value: 'ون'}]})]);
+        expect(ids()).toEqual([5]);
+        expect(scope.resultsGroup).toEqual(['لَا يَعْلَمُ']);
+        expect((scope.foundAyat[0].text_with_highlight.match(/class='highlightedText'/g) || []).length).toBe(1);
+    });
+    it('refreshes visible result groups when only an exclusion changes', function () {
+        var positive = part('alternatives', '', {choices: [{value: 'موسى'}, {value: 'عيسى'}]});
+        run([positive]); expect(scope.resultsGroup.length).toBe(2);
+        run([positive, part('exclude', '', {choices: [{value: 'عيسى'}]})]);
+        expect(scope.resultsGroup).toEqual(['مُوسَىٰ']);
+        expect(scope.filteredAyat.length).toBe(3);
+    });
+
+    it('restores exclusion rules from saved query blocks and clears them when removed', function () {
+        var positive = part('alternatives', '', {choices: [{value: 'موسى'}, {value: 'عيسى'}]});
+        run([positive, part('exclude', '', {choices: [{value: 'فرعون'}]})]);
+        scope.$destroy(); scope = root.$new(); controller('AyatSearchController', {$scope: scope}); root.$digest();
+        expect(ids()).toEqual([2, 3]);
+        expect(scope.queryExclusions.length).toBe(1);
+        expect(JSON.parse(location.search().qb)[1].choices[0].value).toBe('فرعون');
+        run([positive]); expect(ids()).toEqual([1, 2, 3, 6]);
+        expect(scope.queryExclusions).toEqual([]);
+    });
+});

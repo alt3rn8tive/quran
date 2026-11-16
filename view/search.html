@@ -18,7 +18,7 @@
             </div>
             <p id="builder-help" class="field-hint">ابدأ بنص تعرفه، ثم أضف أجزاءً للحروف أو الكلمات التي لا تعرفها. لا تحتاج إلى كتابة أي رموز.</p>
             <ol class="query-blocks" aria-labelledby="builder-title" aria-describedby="builder-help">
-                <li class="query-block" ng-repeat="block in queryBlocks track by block.id">
+                <li class="query-block" ng-class="{'exclusion-block': block.type === 'exclude'}" ng-repeat="block in queryBlocks track by block.id">
                     <div class="block-number" aria-hidden="true">{{$index + 1}}</div>
                     <div class="block-editor">
                         <label class="block-type-label" for="query-block-{{block.id}}">نوع الجزء {{$index + 1}}</label>
@@ -36,6 +36,20 @@
                                 <select ng-model="block.matchMode" ng-options="option.value as option.label for option in textMatchOptions" ng-change="builderChanged()"></select>
                             </label>
                             <p class="field-hint">{{textMatchHint(block)}}</p>
+                        </div>
+                        <div ng-if="block.type === 'alternatives' || block.type === 'exclude'" class="choice-controls">
+                            <label class="block-field" ng-if="block.type === 'exclude'">
+                                <span>نطاق الاستبعاد</span>
+                                <select ng-model="block.scope" ng-change="builderChanged()"><option value="verse">الآية كاملة إذا احتوت على أحد الخيارات</option><option value="word">الكلمات المطابقة فقط</option></select>
+                            </label>
+                            <p class="field-hint" ng-if="block.type === 'exclude' && block.scope === 'word'">يُفحص كامل الكلمة المحيطة بالمطابقة، حتى لو بحثت عن جزء منها. تبقى الكلمات الأخرى في الآية ضمن النتائج.</p>
+                            <div class="choice-row" ng-repeat="choice in block.choices track by $index">
+                                <label class="block-field"><span>الخيار {{$index + 1}}</span><input type="text" ng-model="choice.value" ng-change="builderChanged()" placeholder="اكتب كلمة أو عبارة" autocomplete="off"/></label>
+                                <button type="button" ng-click="removeChoice(block, $index)" ng-disabled="block.choices.length <= (block.type === 'exclude' ? 1 : 2)" aria-label="حذف الخيار {{$index + 1}}">حذف</button>
+                            </div>
+                            <button type="button" ng-click="addChoice(block)" ng-disabled="block.choices.length >= 10">إضافة خيار</button>
+                            <label class="block-field text-match-field"><span>مطابقة الخيارات</span><select ng-model="block.matchMode" ng-options="option.value as option.label for option in listMatchOptions" ng-change="builderChanged()"></select></label>
+                            <p class="field-hint" ng-if="block.type === 'exclude'">هذا شرط للتصفية؛ لا يضيف كلمة أو مسافة إلى النمط. أضف جزءاً للبحث مع هذا الشرط.</p>
                         </div>
                         <div ng-if="block.type === 'symbol'" class="symbol-controls">
                             <label class="block-field">
@@ -82,11 +96,17 @@
                                 </label>
                             </div>
                             <label class="shadda-control"><input type="checkbox" ng-model="block.shadda" ng-change="builderChanged()"/> مع شدة</label>
+                            <label class="shadda-control" ng-if="block.letterMode === 'specific'"><input type="checkbox" ng-model="block.letterOptional" ng-change="builderChanged()"/> هذا الحرف اختياري؛ قد يظهر مرة واحدة أو لا يظهر</label>
                         </div>
-                        <label class="block-field" ng-if="block.type === 'letters'">
-                            <span>عدد الحروف غير المحددة</span>
-                            <select ng-model="block.repetition" ng-options="option.value as option.label for option in repetitionOptions" ng-change="builderChanged()"></select>
-                        </label>
+                        <div ng-if="block.type === 'letters'" class="letter-count-controls">
+                            <label class="block-field"><span>عدد الحروف غير المحددة</span><select ng-model="block.repetition" ng-options="option.value as option.label for option in repetitionOptions" ng-change="builderChanged()"></select></label>
+                            <label class="block-field text-match-field" ng-if="block.repetition === 'exact'"><span>عدد الحروف</span><input type="number" min="1" max="50" step="1" ng-model="block.count" ng-change="builderChanged()"/></label>
+                            <div class="block-control-grid" ng-if="block.repetition === 'range'">
+                                <label class="block-field"><span>أقل عدد من الحروف</span><input type="number" min="1" max="50" step="1" ng-model="block.minCount" ng-change="builderChanged()"/></label>
+                                <label class="block-field"><span>أكبر عدد من الحروف</span><input type="number" min="1" max="50" step="1" ng-model="block.maxCount" ng-change="builderChanged()"/></label>
+                            </div>
+                            <p class="field-hint" ng-if="block.repetition === 'exact' || block.repetition === 'range'">الحركات لا تُحسب حروفاً. اختر من حرف واحد إلى 50 حرفاً.</p>
+                        </div>
                         <div ng-if="block.type === 'context'" class="surrounding-controls">
                             <label class="block-field">
                                 <span>العبارة المعروفة</span>
@@ -106,7 +126,16 @@
                         </div>
                         <div ng-if="block.type === 'between'" class="between-controls">
                             <label class="block-field"><span>العبارة الأولى</span><input type="text" ng-model="block.value" ng-change="builderChanged()" placeholder="مثلاً: إنما" autocomplete="off"/></label>
-                            <p class="gap-description">كلمة واحدة أو أكثر بين العبارتين، في الآية نفسها</p>
+                            <div class="block-control-grid">
+                                <label class="block-field"><span>الكلمات بين العبارتين</span><select ng-model="block.gapMode" ng-options="option.value as option.label for option in gapOptions" ng-change="builderChanged()"></select></label>
+                                <label class="block-field"><span>ترتيب العبارتين</span><select ng-model="block.order" ng-change="builderChanged()"><option value="ordered">الأولى ثم الثانية</option><option value="either">بأي ترتيب</option></select></label>
+                            </div>
+                            <label class="block-field text-match-field" ng-if="block.gapMode === 'exact'"><span>عدد الكلمات الفاصلة</span><input type="number" min="0" max="50" step="1" ng-model="block.gapCount" ng-change="builderChanged()"/></label>
+                            <div class="block-control-grid" ng-if="block.gapMode === 'range'">
+                                <label class="block-field"><span>أقل عدد من الكلمات الفاصلة</span><input type="number" min="0" max="50" step="1" ng-model="block.gapMin" ng-change="builderChanged()"/></label>
+                                <label class="block-field"><span>أكبر عدد من الكلمات الفاصلة</span><input type="number" min="0" max="50" step="1" ng-model="block.gapMax" ng-change="builderChanged()"/></label>
+                            </div>
+                            <p class="gap-description">{{distanceDescription(block)}}، داخل الآية نفسها. علامات الوقف لا تُحسب كلمات.</p>
                             <label class="block-field"><span>العبارة الثانية</span><input type="text" ng-model="block.endValue" ng-change="builderChanged()" placeholder="مثلاً: هو" autocomplete="off"/></label>
                         </div>
                         <label class="block-field" ng-if="block.type === 'capture'">
@@ -117,7 +146,7 @@
                             <span>علاقته بالجزء السابق</span>
                             <select ng-model="block.join" ng-change="builderChanged()"><option value="attached">متصل به دون مسافة</option><option value="space">بعده بمسافة</option></select>
                         </label>
-                        <p class="block-boundary-note" ng-if="$index > 0 && !canConnect($index)">يفصل هذا الجزء عن السابق بمسافة.</p>
+                        <p class="block-boundary-note" ng-if="$index > 0 && block.type !== 'exclude' && !canConnect($index)">يفصل هذا الجزء عن السابق بمسافة.</p>
                         <div class="letter-preview" ng-if="block.type === 'letter'"><span>معاينة الحرف:</span> <strong>{{blockPreview(block)}}</strong></div>
                     </div>
                     <div class="block-actions" role="group" aria-label="ترتيب الجزء {{$index + 1}} أو حذفه">
@@ -136,6 +165,8 @@
                 </div>
             </div>
             <div class="search-tools" aria-label="أدوات الكلمات والعبارات">
+                <button type="button" ng-click="addBlock('alternatives')">ابحث عن أحد الخيارات</button>
+                <button type="button" ng-click="addBlock('exclude')">أضف شرط استبعاد</button>
                 <button type="button" ng-click="addBlock('symbol')">ابحث بعلامة قرآنية</button>
                 <button type="button" ng-click="addBlock('context')">اكتشف كلمات قبل عبارة أو بعدها</button>
                 <button type="button" ng-click="addBlock('between')">ابحث عن عبارتين بينهما كلمات</button>
