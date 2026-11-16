@@ -25,11 +25,40 @@
                         <select id="query-block-{{block.id}}" class="block-type" ng-model="block.type"
                                 ng-options="type.value as type.label for type in blockTypes" ng-change="changeBlockType(block)"></select>
                         <p class="block-hint" id="block-hint-{{block.id}}">{{blockHint(block)}}</p>
-                        <label class="block-field" ng-if="block.type === 'text'">
-                            <span>النص</span>
-                            <input type="text" class="block-text" ng-model="block.value" ng-change="builderChanged()" ng-trim="false"
-                                   placeholder="مثلاً: رحمة أو جِن" aria-describedby="block-hint-{{block.id}}" autocomplete="off"/>
-                        </label>
+                        <div ng-if="block.type === 'text'" class="text-controls">
+                            <label class="block-field">
+                                <span>الكلمة أو العبارة</span>
+                                <input type="text" class="block-text" ng-model="block.value" ng-change="builderChanged()" ng-trim="false"
+                                       placeholder="مثلاً: رحمة أو كل نفس" aria-describedby="block-hint-{{block.id}}" autocomplete="off"/>
+                            </label>
+                            <label class="block-field text-match-field">
+                                <span>مطابقة هذا الجزء</span>
+                                <select ng-model="block.matchMode" ng-options="option.value as option.label for option in textMatchOptions" ng-change="builderChanged()"></select>
+                            </label>
+                            <p class="field-hint">{{textMatchHint(block)}}</p>
+                        </div>
+                        <div ng-if="block.type === 'symbol'" class="symbol-controls">
+                            <label class="block-field">
+                                <span>العلامة القرآنية</span>
+                                <select ng-model="block.symbol" ng-change="builderChanged()">
+                                    <option ng-repeat="symbol in symbolOptions" value="{{symbol.value}}">{{symbol.label}} {{symbol.display}}</option>
+                                </select>
+                            </label>
+                            <div class="symbol-explanation"><strong class="symbol-glyph" aria-hidden="true">{{symbolInfo(block).display}}</strong><p>{{symbolInfo(block).hint}}</p></div>
+                            <div class="block-control-grid">
+                                <label class="block-field">
+                                    <span>ما الذي تريد العثور عليه؟</span>
+                                    <select ng-model="block.symbolMode" ng-change="builderChanged()">
+                                        <option value="only">العلامة نفسها</option><option value="before">الكلمات قبل العلامة</option><option value="after">الكلمات بعد العلامة</option>
+                                    </select>
+                                </label>
+                                <label class="block-field" ng-if="block.symbolMode !== 'only'">
+                                    <span>عدد الكلمات القريبة من العلامة</span>
+                                    <input type="number" min="1" max="20" step="1" ng-model="block.count" ng-change="builderChanged()"/>
+                                </label>
+                            </div>
+                            <p class="field-hint" ng-if="block.symbolMode !== 'only'">تُجمع الكلمات داخل الآية نفسها. لا تُحتسب العلامة إن لم توجد كلمات بالعدد المطلوب في الجهة المختارة.</p>
+                        </div>
                         <div ng-if="block.type === 'letter'" class="letter-controls">
                             <div class="block-control-grid">
                                 <label class="block-field">
@@ -88,6 +117,7 @@
                             <span>علاقته بالجزء السابق</span>
                             <select ng-model="block.join" ng-change="builderChanged()"><option value="attached">متصل به دون مسافة</option><option value="space">بعده بمسافة</option></select>
                         </label>
+                        <p class="block-boundary-note" ng-if="$index > 0 && !canConnect($index)">يفصل هذا الجزء عن السابق بمسافة.</p>
                         <div class="letter-preview" ng-if="block.type === 'letter'"><span>معاينة الحرف:</span> <strong>{{blockPreview(block)}}</strong></div>
                     </div>
                     <div class="block-actions" role="group" aria-label="ترتيب الجزء {{$index + 1}} أو حذفه">
@@ -106,11 +136,15 @@
                 </div>
             </div>
             <div class="search-tools" aria-label="أدوات الكلمات والعبارات">
+                <button type="button" ng-click="addBlock('symbol')">ابحث بعلامة قرآنية</button>
                 <button type="button" ng-click="addBlock('context')">اكتشف كلمات قبل عبارة أو بعدها</button>
                 <button type="button" ng-click="addBlock('between')">ابحث عن عبارتين بينهما كلمات</button>
             </div>
+            <details class="global-boundary-options" ng-open="searchConfig.wordMatch !== 'contains'">
+            <summary>حدود إضافية للبحث بالكامل</summary>
+            <p class="field-hint">خيارات لكل الأجزاء مجتمعة. اختر مطابقة كل كلمة أو عبارة من داخل الجزء نفسه.</p>
             <fieldset class="word-match-controls">
-                <legend>مطابقة الكلمة أو العبارة</legend>
+                <legend>حدود البحث كله</legend>
                 <div class="word-match-choices">
                     <label ng-repeat="option in wordMatchOptions" ng-class="{selected: searchConfig.wordMatch === option.value}">
                         <input type="radio" name="word-match" ng-model="searchConfig.wordMatch" ng-value="option.value" ng-change="wordMatchChanged()"/> {{option.label}}
@@ -118,6 +152,7 @@
                 </div>
                 <p class="field-hint">{{wordMatchHint()}}</p>
             </fieldset>
+            </details>
             <div class="pattern-preview" ng-if="queryBlocks.length" aria-label="معاينة النمط">
                 <span class="preview-label">النمط الذي تبحث عنه</span>
                 <ol><li ng-repeat="part in queryBlocks track by part.id">{{blockPreview(part)}}</li></ol>
@@ -131,6 +166,7 @@
         </form>
         <div class="quick-examples" aria-label="أمثلة جاهزة">
             <span>جرّب مثالاً:</span>
+            <button type="button" ng-click="useExample('۩')">مواضع السجدة</button>
             <button type="button" ng-click="useExample('رحمة')">كلمة دون تشكيل</button>
             <button type="button" ng-click="useExample('جِن')">حركة محددة</button>
             <button type="button" ng-click="useExample('ـَاء')">حرف غير محدد</button>
@@ -165,7 +201,7 @@
 </div>
 
 <div id="main-container">
-    <div class="results-intro" ng-if="!isSearchDone && !hasInputError"><h2>كل بحث يبدأ بكلمة</h2><p>أضف ما تتذكره من الآية في جزء «نص محدد»، أو اختر مثالاً أعلاه. ستجد هنا الآيات والكلمات المطابقة وعدد تكرارها.</p></div>
+    <div class="results-intro" ng-if="!isSearchDone && !hasInputError"><h2>كل بحث يبدأ بكلمة</h2><p>أضف ما تتذكره من الآية في جزء «كلمة أو عبارة»، أو اختر مثالاً أعلاه. ستجد هنا الآيات والكلمات المطابقة وعدد تكرارها.</p></div>
     <div class="results-summary" ng-if="isSearchDone" role="status">{{filteredAyat.length}} آية · {{resultsGroup.length}} نتيجة مختلفة <span>اختر كلمة أو سورة لتصفية الآيات.</span></div>
     <!--<input id="hide-sidebar" name="h" type="checkbox">-->
     <!--<label for="hide-sidebar">خيارات البحث</label>-->

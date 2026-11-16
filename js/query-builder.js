@@ -1,7 +1,8 @@
 /* Translate readable query blocks to the existing search language. */
 var QuranQueryBuilder = (function () {
     var types = [
-        {value: 'text', label: 'نص محدد', hint: 'اكتب حرفاً أو كلمة أو عبارة، مع الحركات التي تريد مطابقتها.'},
+        {value: 'text', label: 'كلمة أو عبارة', hint: 'اكتب النص، ثم اختر مطابقة هذا الجزء دون تغيير بقية الأجزاء.'},
+        {value: 'symbol', label: 'علامة قرآنية', hint: 'ابحث عن علامة وقف أو سجدة، أو اجمع الكلمات القريبة منها داخل الآية نفسها.'},
         {value: 'letter', label: 'حرف وحركته', hint: 'اختر حرفاً محدداً أو أي حرف، ثم اختر حركته.'},
         {value: 'letters', label: 'حروف غير محددة', hint: 'اختر عدد الحروف المجهولة داخل الكلمة نفسها.'},
         {value: 'word', label: 'كلمة غير محددة', hint: 'يطابق كلمة كاملة واحدة، مهما كانت حروفها.'},
@@ -28,6 +29,27 @@ var QuranQueryBuilder = (function () {
         {value: 'starts', label: 'يبدأ بـ', hint: 'تبدأ المطابقة في بداية الكلمة؛ يمكن أن تتبعها حروف أخرى.'},
         {value: 'ends', label: 'ينتهي بـ', hint: 'تنتهي المطابقة في نهاية الكلمة؛ يمكن أن تسبقها حروف أخرى.'}
     ];
+    var textModes = [
+        {value: 'contains', label: 'جزء من كلمة', hint: 'لا يشترط أن يبدأ هذا الجزء أو ينتهي عند حدّ كلمة.'},
+        {value: 'whole', label: 'كلمة كاملة', hint: 'يطابق كلمة واحدة دون اتصالها بحروف أخرى.'},
+        {value: 'starts', label: 'بداية كلمة', hint: 'يشترط أن يبدأ النص في أول الكلمة.'},
+        {value: 'ends', label: 'نهاية كلمة', hint: 'يشترط أن ينتهي النص في آخر الكلمة.'},
+        {value: 'phrase', label: 'عبارة كاملة', hint: 'يطابق كلمتين أو أكثر بالترتيب نفسه، عند حدود بداية العبارة ونهايتها.'}
+    ];
+    var symbols = [
+        {value: '۩', label: 'علامة السجدة', hint: 'موضع سجدة تلاوة كما هو معلّم في النص.'},
+        {value: 'ۘ', label: 'الوقف اللازم', hint: 'علامة الوقف اللازم في النص القرآني.'},
+        {value: 'ۙ', label: 'الوقف الممنوع', hint: 'علامة النهي عن الوقف في هذا الموضع.'},
+        {value: 'ۖ', label: 'الوصل أولى', hint: 'يجوز الوقف، والوصل أولى.'},
+        {value: 'ۗ', label: 'الوقف أولى', hint: 'يجوز الوصل، والوقف أولى.'},
+        {value: 'ۚ', label: 'الوقف الجائز', hint: 'يجوز الوقف والوصل في هذا الموضع.'},
+        {value: 'ۛ', label: 'تعانق الوقف', hint: 'علامتان مترابطتان للوقف على أحد الموضعين.'},
+        {value: 'ۜ', label: 'السكتة', hint: 'علامة السكتة كما هي مثبتة في النص.'}
+    ];
+    // A dotted circle gives combining Quran marks a readable display base.
+    // Only value, never display, is used by the search engine.
+    symbols.forEach(function (symbol) { symbol.display = symbol.value === '۩' ? symbol.value : '◌' + symbol.value; });
+    var leftBoundary = '(?<= )', rightBoundary = '(?= )';
     var alphabet = Array.from('ءآأؤإئابتثجحخدذرزسشصضطظعغفقكلمنهويىةٱ');
     var singleLetterPattern = /^[\u0621-\u063A\u0641-\u064A\u0671]$/;
     var textPattern = /^[\u0621-\u063A\u0641-\u065F\u0670\u0671\u06D6-\u06ED\s]+$/;
@@ -37,7 +59,7 @@ var QuranQueryBuilder = (function () {
         return {
             type: type, value: value || '', join: 'attached', mark: '', shadda: false,
             letterMode: 'any', repetition: type === 'optional' ? 'zeroOrMore' : 'oneOrMore',
-            count: 1, direction: 'after', endValue: ''
+            count: 1, direction: 'after', endValue: '', matchMode: 'contains', symbol: '۩', symbolMode: 'only'
         };
     }
 
@@ -61,6 +83,21 @@ var QuranQueryBuilder = (function () {
         return '(' + Array(Number(count)).fill('.').join(' ') + ')';
     }
 
+    function separates(left, right) {
+        var phraseParts = ['context', 'between', 'symbol'];
+        return phraseParts.includes(left.type) || phraseParts.includes(right.type)
+            || (left.type === 'text' && ['whole', 'phrase', 'ends'].includes(left.matchMode))
+            || (right.type === 'text' && ['whole', 'phrase', 'starts'].includes(right.matchMode));
+    }
+
+    function validCount(count) {
+        return Number.isInteger(Number(count)) && count >= 1 && count <= 20;
+    }
+
+    function symbolInfo(block) {
+        return symbols.find(function (option) { return option.value === block.symbol; });
+    }
+
     function compile(blocks) {
         if (!Array.isArray(blocks) || !blocks.length) {
             return {error: 'أضف جزءاً واحداً على الأقل لبناء البحث.'};
@@ -77,7 +114,23 @@ var QuranQueryBuilder = (function () {
                 return {error: 'أدخل نصاً عربياً في الجزء ' + (i + 1) + '، دون رموز البحث، أو احذف هذا الجزء.'};
             }
             if (block.type === 'text') {
-                token = block.value;
+                var matchMode = block.matchMode || 'contains';
+                if (!textModes.some(function (mode) { return mode.value === matchMode; })) return {error: 'اختر طريقة مطابقة الجزء ' + (i + 1) + '.'};
+                var words = block.value.trim().split(/\s+/).length;
+                if (matchMode === 'whole' && words !== 1) return {error: 'الجزء ' + (i + 1) + ' يحتوي على أكثر من كلمة. اختر «عبارة كاملة».'};
+                if (matchMode === 'phrase' && words < 2) return {error: 'أدخل كلمتين على الأقل في العبارة، أو اختر «كلمة كاملة».'};
+                token = matchMode === 'contains' ? block.value : block.value.trim();
+                if (['whole', 'phrase', 'starts'].includes(matchMode)) token = leftBoundary + token;
+                if (['whole', 'phrase', 'ends'].includes(matchMode)) token += rightBoundary;
+            } else if (block.type === 'symbol') {
+                if (!symbolInfo(block)) return {error: 'اختر علامة قرآنية من القائمة.'};
+                if (!['only', 'before', 'after'].includes(block.symbolMode)) return {error: 'اختر البحث عن العلامة أو الكلمات القريبة منها.'};
+                token = block.symbol;
+                if (block.symbolMode !== 'only') {
+                    if (!validCount(block.count)) return {error: 'اختر عدداً صحيحاً من كلمة واحدة إلى عشرين كلمة.'};
+                    var nearby = captureWords(block.count);
+                    token = block.symbolMode === 'before' ? ' ' + nearby + ' ' + token : token + ' ' + nearby + ' ';
+                }
             } else if (block.type === 'letter') {
                 if (!markPattern.test(block.mark || '')) return {error: 'اختر حركة صحيحة للحرف.'};
                 var specific = block.letterMode === 'specific';
@@ -97,7 +150,7 @@ var QuranQueryBuilder = (function () {
                 if (!validText(block.endValue)) return {error: 'أدخل العبارة الثانية في الجزء ' + (i + 1) + '.'};
                 token = block.value.trim() + ' .. ' + block.endValue.trim();
             } else {
-                if (!Number.isInteger(Number(block.count)) || block.count < 1 || block.count > 20) {
+                if (!validCount(block.count)) {
                     return {error: 'اختر عدداً صحيحاً من كلمة واحدة إلى عشرين كلمة.'};
                 }
                 var captured = captureWords(block.count);
@@ -107,15 +160,23 @@ var QuranQueryBuilder = (function () {
                         ? ' ' + captured + ' ' + block.value.trim() : block.value.trim() + ' ' + captured + ' ';
                 } else token = ' ' + captured + ' ';
             }
-            var phrasePart = ['context', 'between'];
-            var separate = i && (block.join === 'space' || phrasePart.includes(block.type) || phrasePart.includes(blocks[i - 1].type));
+            var separate = i && (block.join === 'space' || separates(blocks[i - 1], block));
             query += (separate ? ' ' : '') + token;
         }
         return {query: query.replace(/\s+/g, ' ')};
     }
 
     function preview(block) {
-        if (block.type === 'text') return block.value || 'نص لم يُكتب بعد';
+        if (block.type === 'text') {
+            var textMode = textModes.find(function (option) { return option.value === (block.matchMode || 'contains'); });
+            return (textMode ? textMode.label : 'نص') + ' «' + (block.value || 'لم يُكتب بعد') + '»';
+        }
+        if (block.type === 'symbol') {
+            var info = symbolInfo(block);
+            var label = info ? info.label + ' ' + info.display : 'علامة لم تُحدد بعد';
+            return block.symbolMode === 'only' ? label
+                : 'جمع ' + (block.count || '…') + ' من الكلمات ' + (block.symbolMode === 'before' ? 'قبل ' : 'بعد ') + label;
+        }
         if (block.type === 'letter') {
             var vowel = (block.mark || '').replace(/ّ/g, '');
             var shadda = block.shadda || (block.mark || '').includes('ّ');
@@ -155,7 +216,12 @@ var QuranQueryBuilder = (function () {
                 continue;
             }
             var block, match;
-            if ((match = remaining.match(/^\((\.(?:\s+\.)*)\)/))) {
+            var symbol = symbols.find(function (option) { return option.value === remaining[0]; });
+            if (symbol) {
+                match = [symbol.value];
+                block = create('symbol');
+                block.symbol = symbol.value;
+            } else if ((match = remaining.match(/^\((\.(?:\s+\.)*)\)/))) {
                 block = create('capture');
                 block.count = match[1].split(/\s+/).length;
             } else if ((match = remaining.match(/^[ـ_]([\u064B-\u0652\u0670]*)/))) {
@@ -193,6 +259,6 @@ var QuranQueryBuilder = (function () {
         return blocks;
     }
 
-    return {types: types, marks: marks, repetitions: repetitions, wordModes: wordModes, alphabet: alphabet,
-        create: create, normalise: normalise, compile: compile, parse: parse, preview: preview};
+    return {types: types, marks: marks, repetitions: repetitions, wordModes: wordModes, textModes: textModes, symbols: symbols, alphabet: alphabet,
+        create: create, normalise: normalise, compile: compile, parse: parse, preview: preview, separates: separates, symbolInfo: symbolInfo};
 }());

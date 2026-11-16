@@ -64,7 +64,7 @@ function addAfterEachLetter(add_str, str) {
 
     var chars_arr = str.split("");
 
-    var ignored_chars = ':<>!{}+-.(|)[]*?؟$^ ْ' + numbers + kul_alharakat;
+    var ignored_chars = '\uE002\uE003:<>!{}+-.(|)[]*?؟$^ ْ' + numbers + kul_alharakat;
     const ignored_chars_arr = ignored_chars.split("");
     const count_chars = chars_arr.length;
     for (var i = 0; i < count_chars; i++) {
@@ -80,6 +80,9 @@ function addAfterEachLetter(add_str, str) {
 }
 
 function getRegexPatternForString(text, config) {
+    // Protect per-block boundaries from whitespace and letter expansion.
+    // Expand them after the remaining search language has been translated.
+    text = text.replace(/\(\?<= \)/g, '\uE002').replace(/\(\?= \)/g, '\uE003');
 
     text = text.replace(/\*/g,"**");
 
@@ -144,6 +147,7 @@ function getRegexPatternForString(text, config) {
     var wordPattern = kul_huroof_pattern + kul_huroof_pattern.slice(0, -1) + kul_alharakat + ']*';
     text = text.replace(/\uE000/g, '(?:' + wordPattern + ')');
     text = text.replace(/\uE001/g, '(?:' + wordPattern + ')?');
+    text = text.replace(/\uE002/g, '(?<= )').replace(/\uE003/g, '(?= )');
 
     try {
         text = new RegExp(text, regex_flags);
@@ -794,6 +798,9 @@ myApp.controller('AyatSearchController', function ($scope, $window, $http, $rout
     $scope.repetitionOptions = QuranQueryBuilder.repetitions;
     $scope.wordMatchOptions = QuranQueryBuilder.wordModes;
     $scope.blockPreview = QuranQueryBuilder.preview;
+    $scope.textMatchOptions = QuranQueryBuilder.textModes;
+    $scope.symbolOptions = QuranQueryBuilder.symbols;
+    $scope.symbolInfo = QuranQueryBuilder.symbolInfo;
     $scope.newBlockType = 'text';
     $scope.builderError = '';
     $scope.queryEdited = false;
@@ -852,12 +859,16 @@ myApp.controller('AyatSearchController', function ($scope, $window, $http, $rout
         $scope.searchConfig.excludePartOfWords = $scope.searchConfig.wordMatch === 'whole';
         $scope.builderChanged();
     };
+    $scope.textMatchHint = function (block) {
+        return $scope.textMatchOptions.find(function (option) { return option.value === block.matchMode; }).hint;
+    };
     $scope.wordMatchHint = function () {
         return $scope.wordMatchOptions.find(function (option) { return option.value === $scope.searchConfig.wordMatch; }).hint;
     };
     $scope.canConnect = function (index) {
         var parts = ['text', 'letter', 'letters'];
-        return index > 0 && parts.includes($scope.queryBlocks[index].type) && parts.includes($scope.queryBlocks[index - 1].type);
+        return index > 0 && parts.includes($scope.queryBlocks[index].type) && parts.includes($scope.queryBlocks[index - 1].type)
+            && !QuranQueryBuilder.separates($scope.queryBlocks[index - 1], $scope.queryBlocks[index]);
     };
     $scope.moveBlock = function (index, direction) {
         var destination = index + direction;
@@ -923,7 +934,7 @@ myApp.controller('AyatSearchController', function ($scope, $window, $http, $rout
             return {
                 type: block.type, value: block.value, join: block.join, mark: block.mark, shadda: block.shadda,
                 letterMode: block.letterMode, repetition: block.repetition, count: block.count,
-                direction: block.direction, endValue: block.endValue
+                direction: block.direction, endValue: block.endValue, matchMode: block.matchMode, symbol: block.symbol, symbolMode: block.symbolMode
             };
         });
         $location.search("s", compiled.query);

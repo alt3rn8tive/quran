@@ -977,3 +977,13 @@ input[type=checkbox] { accent-color: var(--accent); width: 18px; height: 18px; }
     .search-tools { flex-direction: column; }
     .search-tools button { width: 100%; }
 }
+
+.text-match-field { margin-top: 14px; }
+.text-controls select, .symbol-controls select { width: 100%; min-width: 0; }
+.symbol-explanation { display: flex; align-items: center; gap: 16px; background: white; border: 1px solid var(--line); border-radius: 8px; padding: 12px 16px; margin-top: 12px; }
+.symbol-glyph { font-size: 2.4rem; line-height: 1.5; min-width: 40px; text-align: center; color: var(--accent); }
+.symbol-explanation p { font-size: .85rem; margin: 0; color: #526963; }
+.block-boundary-note { font-size: .8rem; color: #526963; margin: 12px 0 0; }
+.global-boundary-options { margin: 20px 0; border-top: 1px solid var(--line); padding-top: 12px; }
+.global-boundary-options > summary { font-size: .9rem; }
+.global-boundary-options .word-match-controls { margin-top: 12px; }
