@@ -237,6 +237,13 @@
 
 <div id="main-container">
     <div class="results-intro" ng-if="!isSearchDone && !hasInputError"><h2>كل بحث يبدأ بكلمة</h2><p>أضف ما تتذكره من الآية في جزء «كلمة أو عبارة»، أو اختر مثالاً أعلاه. ستجد هنا الآيات والكلمات المطابقة وعدد تكرارها.</p></div>
+    <div class="share-search" ng-if="isSearchDone">
+        <button type="button" ng-click="copySearchLink()" ng-disabled="queryEdited">نسخ رابط البحث</button>
+        <label ng-if="shareUrl">رابط البحث المحفوظ
+            <input id="saved-search-link" type="text" dir="ltr" readonly ng-value="shareUrl" onclick="this.select()" aria-label="رابط البحث المحفوظ">
+        </label>
+        <span role="status" aria-live="polite">{{copyLinkStatus}}</span>
+    </div>
     <div class="results-summary" ng-if="isSearchDone" role="status">{{filteredAyat.length}} {{isCrossAyah() ? 'مجموعة مطابقة' : 'آية'}} · {{distinctAyahCount}} آية مختلفة · {{resultsGroup.length}} نتيجة مختلفة <span>اختر كلمة أو سورة لتصفية الآيات.</span></div>
     <!--<input id="hide-sidebar" name="h" type="checkbox">-->
     <!--<label for="hide-sidebar">خيارات البحث</label>-->

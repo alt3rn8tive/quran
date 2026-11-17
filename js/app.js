@@ -1045,6 +1045,37 @@ myApp.controller('AyatSearchController', function ($scope, $window, $http, $rout
         $location.search(currentSearchParams);
     };
 
+    $scope.copySearchLink = function () {
+        // Encode values once, including Arabic, JSON, boundary markers and
+        // punctuation in result filters. Never encode the entire URL at once.
+        var params = Object.assign({}, $location.search(), {
+            filter_results: getTrueKeys($scope.useResults).join(','),
+            filter_suwar: getTrueKeys($scope.useSuwar).join(',')
+        });
+        var query = Object.keys(params).filter(function (key) {
+            return params[key] !== null && params[key] !== undefined && params[key] !== '';
+        }).map(function (key) {
+            return encodeURIComponent(key) + '=' + encodeURIComponent(String(params[key]));
+        }).join('&');
+        $scope.shareUrl = $location.absUrl().split('#')[0] + '#!/search?' + query;
+        $scope.copyLinkStatus = '';
+        function fallback() {
+            var input = document.getElementById('saved-search-link');
+            if (input) {
+                input.focus(); input.select();
+                try {
+                    if (document.execCommand('copy')) { $scope.copyLinkStatus = 'تم نسخ الرابط'; return; }
+                } catch (error) { /* Keep the selected URL available for manual copy. */ }
+            }
+            $scope.copyLinkStatus = 'حدد الرابط وانسخه لفتح البحث نفسه';
+        }
+        if ($window.navigator.clipboard && $window.navigator.clipboard.writeText) {
+            $window.navigator.clipboard.writeText($scope.shareUrl).then(function () {
+                $scope.$evalAsync(function () { $scope.copyLinkStatus = 'تم نسخ الرابط'; });
+            }, function () { $timeout(fallback, 0); });
+        } else $timeout(fallback, 0);
+    };
+
     $scope.clearResultsFilter = function () {
         $scope.useResults = {};
     };

@@ -640,4 +640,25 @@ describe('Cross-ayah searches', function () {
         run([part('text', 'العالمين'), part('ayahBreak'), part('capture'), part('exclude', '', {scope: 'word', choices: [{value: 'الرحمن'}]})]);
         expect(scope.foundAyat.length).toBe(0);
     });
+    it('copies a fully escaped URL that restores cross-ayah settings and active filters', function () {
+        scope.reference = {ayah: 1, surah: 1}; run(query());
+        scope.useResults = {}; scope.useResults[scope.resultsGroup[0]] = true;
+        scope.useSuwar = {'1': true}; root.$digest();
+        scope.copySearchLink();
+        var copied = scope.shareUrl;
+        expect(copied).toContain('%EE%80%84');
+        expect(copied).not.toMatch(/[\u0600-\u06ff\uE004\s<>"{}]/);
+        var params = {};
+        copied.split('?')[1].split('&').forEach(function (pair) {
+            var parts = pair.split('='); params[decodeURIComponent(parts[0])] = decodeURIComponent(parts[1]);
+        });
+        expect(JSON.parse(params.qb)[1].type).toBe('ayahBreak');
+        expect(params.filter_results).toBe(scope.resultsGroup[0]);
+        scope.$destroy(); location.search(params); scope = root.$new();
+        controller('AyatSearchController', {$scope: scope}); root.$digest();
+        expect(scope.filteredAyat.length).toBe(1);
+        expect(scope.foundAyat[0].ayat.map(function (ayah) { return ayah.ID; })).toEqual([1, 2]);
+        expect(scope.reference).toEqual({ayah: 1, surah: 1});
+    });
+
 });
