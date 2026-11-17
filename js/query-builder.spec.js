@@ -565,3 +565,79 @@ describe('Exclusion scopes, counts and highlights', function () {
         expect(scope.queryExclusions).toEqual([]);
     });
 });
+
+describe('Cross-ayah searches', function () {
+    var original, root, scope, location, controller;
+    function part(type, value, extra) { return Object.assign(QuranQueryBuilder.create(type, value), extra || {}); }
+    function query() { return [part('text', 'العالمين', {matchMode: 'whole'}), part('ayahBreak'), part('text', 'الرحمن', {matchMode: 'whole'})]; }
+    function run(blocks) { scope.queryBlocks = blocks; scope.searchButtonClicked(); root.$digest(); }
+    beforeEach(angular.mock.module('myApp'));
+    beforeEach(angular.mock.inject(function ($controller, $rootScope, $httpBackend, $location) {
+        original = all_ayat;
+        all_ayat = [
+            {ID: 1, sura_id: 1, verse_id: 1, text: ' رب العالمين ۚ '},
+            {ID: 2, sura_id: 1, verse_id: 2, text: ' الرحمن الرحيم '},
+            {ID: 3, sura_id: 1, verse_id: 3, text: ' العالمين '},
+            {ID: 4, sura_id: 2, verse_id: 1, text: ' الرحمن '},
+            {ID: 5, sura_id: 2, verse_id: 2, text: ' العالمين '},
+            {ID: 6, sura_id: 2, verse_id: 3, text: ' الرحمن الرحيم '}
+        ];
+        root = $rootScope; location = $location; controller = $controller;
+        location.path('/search').search({});
+        scope = root.$new(); controller('AyatSearchController', {$scope: scope});
+        $httpBackend.whenGET('view/search.html').respond('');
+    }));
+    afterEach(function () { all_ayat = original; scope.$destroy(); });
+    it('requires searchable parts on both sides of each separator', function () {
+        [[part('ayahBreak')], [part('ayahBreak'), part('text', 'رب')], [part('text', 'رب'), part('ayahBreak')], [part('text', 'رب'), part('ayahBreak'), part('ayahBreak'), part('text', 'رب')]].forEach(function (blocks) {
+            expect(QuranQueryBuilder.compile(blocks).error).toBeTruthy();
+        });
+    });
+    it('matches consecutive ayat with pause marks but never crosses a surah', function () {
+        run(query());
+        expect(scope.foundAyat.map(function (item) { return item.ID; })).toEqual([1, 5]);
+        expect(scope.foundAyat[0].ayat.length).toBe(2);
+        expect(scope.distinctAyahCount).toBe(4);
+        expect(scope.resultsGroup.join('')).not.toContain('\uE004');
+        scope.foundAyat[0].ayat.forEach(function (ayah) {
+            expect(ayah.text_with_highlight).toContain("class='highlightedText'");
+            expect(ayah.text_with_highlight.replace(/<[^>]*>/g, '')).toBe(ayah.text);
+        });
+    });
+    it('keeps ordinary phrases and word wildcards inside a single ayah', function () {
+        run([part('text', 'العالمين الرحمن')]); expect(scope.foundAyat.length).toBe(0);
+        run([part('text', 'العالمين'), part('words'), part('text', 'الرحيم')]); expect(scope.foundAyat.length).toBe(0);
+    });
+    it('uses the reference number as the starting ayah and restores saved blocks and filters', function () {
+        scope.reference = {ayah: 2, surah: 2}; run(query());
+        expect(scope.foundAyat.map(function (item) { return item.ID; })).toEqual([5]);
+        scope.$destroy(); scope = root.$new(); controller('AyatSearchController', {$scope: scope}); root.$digest();
+        expect(scope.queryBlocks[1].type).toBe('ayahBreak');
+        expect(scope.reference).toEqual({ayah: 2, surah: 2});
+        expect(scope.foundAyat[0].ID).toBe(5);
+        run([part('text', 'الرحمن')]); expect(scope.foundAyat.length).toBe(0);
+    });
+    it('counts overlapping groups as groups and distinct ayat separately', function () {
+        all_ayat = [1, 2, 3].map(function (id) { return {ID: id, sura_id: 1, verse_id: id, text: ' رب '}; });
+        run([part('text', 'رب'), part('ayahBreak'), part('text', 'رب')]);
+        expect(scope.filteredAyat.length).toBe(2); expect(scope.distinctAyahCount).toBe(3);
+        run([part('text', 'رب'), part('ayahBreak'), part('text', 'رب'), part('ayahBreak'), part('text', 'رب')]);
+        expect(scope.filteredAyat.length).toBe(1); expect(scope.distinctAyahCount).toBe(3);
+    });
+    it('preserves capture frequency, highlight offsets and result filtering', function () {
+        run([part('text', 'العالمين'), part('ayahBreak'), part('capture')]);
+        expect(scope.countedAyahAttributes.matched['الرحمن']).toBe(2);
+        expect(scope.foundAyat[0].ayat[1].text_with_highlight).toContain('الرحمن</span>');
+        scope.useResults = {'الرحمن': true}; root.$digest(); expect(scope.filteredAyat.length).toBe(2);
+        scope.useSuwar = {'2': true}; root.$digest(); expect(scope.filteredAyat.length).toBe(1); expect(scope.distinctAyahCount).toBe(2);
+    });
+    it('excludes groups if any involved ayah contains a verse exclusion', function () {
+        run(query().concat([part('exclude', '', {choices: [{value: 'رب'}]})]));
+        expect(scope.foundAyat.map(function (item) { return item.ID; })).toEqual([5]);
+        run(query().concat([part('exclude', '', {choices: [{value: 'الرحيم'}]})])); expect(scope.foundAyat.length).toBe(0);
+    });
+    it('applies full enclosing word exclusions to captured substrings after the boundary', function () {
+        run([part('text', 'العالمين'), part('ayahBreak'), part('capture'), part('exclude', '', {scope: 'word', choices: [{value: 'الرحمن'}]})]);
+        expect(scope.foundAyat.length).toBe(0);
+    });
+});

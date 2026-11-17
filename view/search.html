@@ -146,7 +146,7 @@
                             <span>علاقته بالجزء السابق</span>
                             <select ng-model="block.join" ng-change="builderChanged()"><option value="attached">متصل به دون مسافة</option><option value="space">بعده بمسافة</option></select>
                         </label>
-                        <p class="block-boundary-note" ng-if="$index > 0 && block.type !== 'exclude' && !canConnect($index)">يفصل هذا الجزء عن السابق بمسافة.</p>
+                        <p class="block-boundary-note" ng-if="hasSpaceBefore($index)">يفصل هذا الجزء عن السابق بمسافة.</p>
                         <div class="letter-preview" ng-if="block.type === 'letter'"><span>معاينة الحرف:</span> <strong>{{blockPreview(block)}}</strong></div>
                     </div>
                     <div class="block-actions" role="group" aria-label="ترتيب الجزء {{$index + 1}} أو حذفه">
@@ -170,6 +170,10 @@
                 <button type="button" ng-click="addBlock('symbol')">ابحث بعلامة قرآنية</button>
                 <button type="button" ng-click="addBlock('context')">اكتشف كلمات قبل عبارة أو بعدها</button>
                 <button type="button" ng-click="addBlock('between')">ابحث عن عبارتين بينهما كلمات</button>
+            </div>
+            <div class="reference-filters">
+                <label>{{isCrossAyah() ? 'رقم آية البداية' : 'رقم الآية'}} <input type="number" min="1" max="286" ng-model="reference.ayah" ng-change="builderChanged()" placeholder="كل الآيات"></label>
+                <label>السورة <select ng-model="reference.surah" ng-options="surah.order as surah.title for surah in suwar" ng-change="builderChanged()"><option value="">كل السور</option></select></label>
             </div>
             <details class="global-boundary-options" ng-open="searchConfig.wordMatch !== 'contains'">
             <summary>حدود إضافية للبحث بالكامل</summary>
@@ -218,12 +222,12 @@
 
             <label>
                 <input type="checkbox" ng-model="searchConfig.searchFromBeginning" ng-change="builderChanged()"/>
-                <span>في بداية الآية فقط</span>
+                <span>{{isCrossAyah() ? 'في بداية آية البداية فقط' : 'في بداية الآية فقط'}}</span>
             </label>
 
             <label>
                 <input type="checkbox" ng-model="searchConfig.searchOnEnd" ng-change="builderChanged()"/>
-                <span>في نهاية الآية فقط</span>
+                <span>{{isCrossAyah() ? 'في نهاية الآية الأخيرة فقط' : 'في نهاية الآية فقط'}}</span>
             </label>
         </div>
 
@@ -233,7 +237,7 @@
 
 <div id="main-container">
     <div class="results-intro" ng-if="!isSearchDone && !hasInputError"><h2>كل بحث يبدأ بكلمة</h2><p>أضف ما تتذكره من الآية في جزء «كلمة أو عبارة»، أو اختر مثالاً أعلاه. ستجد هنا الآيات والكلمات المطابقة وعدد تكرارها.</p></div>
-    <div class="results-summary" ng-if="isSearchDone" role="status">{{filteredAyat.length}} آية · {{resultsGroup.length}} نتيجة مختلفة <span>اختر كلمة أو سورة لتصفية الآيات.</span></div>
+    <div class="results-summary" ng-if="isSearchDone" role="status">{{filteredAyat.length}} {{isCrossAyah() ? 'مجموعة مطابقة' : 'آية'}} · {{distinctAyahCount}} آية مختلفة · {{resultsGroup.length}} نتيجة مختلفة <span>اختر كلمة أو سورة لتصفية الآيات.</span></div>
     <!--<input id="hide-sidebar" name="h" type="checkbox">-->
     <!--<label for="hide-sidebar">خيارات البحث</label>-->
 
@@ -257,7 +261,7 @@
         <!--        <label for="show-only-selected-results"><input type="checkbox" ng-model="showOnlySelectedResults" id="show-only-selected-results">عرض فقط ما تم اختياره من نتائج البحث؟ </label>-->
         <!--    </div>-->
         <div class="sidebar-title">
-            <b>عدد الآيات
+            <b>{{isCrossAyah() ? 'عدد مجموعات المطابقة' : 'عدد الآيات'}}
                 ({{ filteredAyat.length }})</b>
         </div>
         <div class="filter">
@@ -303,14 +307,14 @@
         <div>
             <ul id="data-list">
                 <li ng-repeat="searchResultItem in pagedItems[currentPage] | filter:query">
-                    <p><span ng-bind-html="searchResultItem.text_with_highlight"></span>
+                    <p ng-repeat="ayah in searchResultItem.ayat"><span ng-bind-html="ayah.text_with_highlight"></span>
                         <b class="ayah-source">
-                            <a href="#!/surah?id={{ searchResultItem.sura_id }}#ayah-{{ searchResultItem.verse_id }}">
+                            <a href="#!/surah?id={{ ayah.sura_id }}#ayah-{{ ayah.verse_id }}">
                                 سورة
-                                {{ suwar[searchResultItem.sura_id - 1].title }}
+                                {{ suwar[ayah.sura_id - 1].title }}
                                 -
                                 الآية
-                                {{ searchResultItem.verse_id }}
+                                {{ ayah.verse_id }}
                             </a>
                         </b>
                     </p>

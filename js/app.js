@@ -64,7 +64,7 @@ function addAfterEachLetter(add_str, str) {
 
     var chars_arr = str.split("");
 
-    var ignored_chars = '\uE002\uE003\uE006\uE010\uE011\uE012\uE013\uE014\uE015\uE016\uE017\uE018\uE019\uE01A:<>!{}+-.(|)[]*?؟$^ ْ' + numbers + kul_alharakat;
+    var ignored_chars = '\uE002\uE003\uE004\uE006\uE010\uE011\uE012\uE013\uE014\uE015\uE016\uE017\uE018\uE019\uE01A:<>!{}+-.(|)[]*?؟$^ ْ' + numbers + kul_alharakat;
     const ignored_chars_arr = ignored_chars.split("");
     const count_chars = chars_arr.length;
     for (var i = 0; i < count_chars; i++) {
@@ -160,6 +160,8 @@ function getRegexPatternForString(text, config) {
     text = text.replace(/\uE002/g, '(?<= )').replace(/\uE003/g, '(?= )');
     text = text.replace(/\uE006/g, '(?:[ا-يآؤئإأٱء]' + optional_kul_alharakat + ')');
     text = text.replace(/[\uE010-\uE01A]/g, function (character) { return character === '\uE01A' ? ',' : String(character.charCodeAt(0) - 0xE010); });
+
+    text = text.replace(/\uE004/g, '(?: [' + quran_symbols + '])* \uE004 ');
 
     try {
         text = new RegExp(text, regex_flags);
@@ -556,11 +558,23 @@ myApp.controller('AyatSearchController', function ($scope, $window, $http, $rout
         }
     };
 
+    $scope.reference = {ayah: Number(urlQueryParameters.ayah) || null, surah: Number(urlQueryParameters.surah) || null};
+    $scope.isCrossAyah = function () { return ($scope.queryBlocks || []).some(function (block) { return block.type === 'ayahBreak'; }); };
     $scope.queryExclusions = [];
     var matchAyat = function (newValue) {
         var rules = $scope.queryExclusions;
         var wordRules = rules.some(function (rule) { return rule.scope === 'word'; });
-        return all_ayat.filter(function (item) {
+        // Every window has exactly the requested boundaries; ordinary word and
+        // letter patterns cannot consume the private boundary marker.
+        var boundaryCount = ($scope.userSearchQuery.match(/\uE004/g) || []).length;
+        var candidates = all_ayat.map(function (source, index) {
+            var parts = all_ayat.slice(index, index + boundaryCount + 1);
+            if (parts.length !== boundaryCount + 1 || parts.some(function (part, offset) { return part.sura_id !== source.sura_id || part.verse_id !== source.verse_id + offset; })) return null;
+            if ($scope.reference.ayah && source.verse_id !== Number($scope.reference.ayah)) return null;
+            if ($scope.reference.surah && source.sura_id !== Number($scope.reference.surah)) return null;
+            return Object.assign({}, source, {parts: parts, text: parts.map(function (part) { return part.text; }).join('\uE004')});
+        }).filter(Boolean);
+        return candidates.filter(function (item) {
             return item.text.match($scope.searchQueryRegex) !== null && !excludedBy(rules, 'verse', item.text);
         }).map(function (source) {
             var ayah = Object.assign({}, source);
@@ -576,18 +590,26 @@ myApp.controller('AyatSearchController', function ($scope, $window, $http, $rout
                 var offset = match.length > 1 ? 1 : 0;
                 var found = match.slice(offset).filter(function (value, index) {
                     if (typeof value !== 'string' || !value.trim()) return false;
-                    if (!wordRules) return true;
                     var range = match.indices[index + offset];
-                    if (!range || excludedBy(rules, 'word', QuranQueryBuilder.wordContext(ayah.text, range))) return false;
+                    if (!range || (wordRules && excludedBy(rules, 'word', QuranQueryBuilder.wordContext(ayah.text.replace(/\uE004/g, ' '), range)))) return false;
                     ranges.push(range);
                     return true;
                 });
+                if (!wordRules && found.length) ranges.push(match.indices[0]);
+                found = found.map(function (value) { return value.replace(/\uE004/g, '۝'); });
                 ayah.exact_match = ayah.exact_match.concat(found);
                 ayah.matched = ayah.matched.concat(found.map(function (value) {
                     return $scope.shouldRemoveLastHarakah ? removeHarakatOfLastHarf(value) : value;
                 }));
             }
             ayah.text_with_highlight = wordRules ? highlightRanges(ayah.text, ranges) : highlightText(ayah.text, $scope.searchQueryRegex);
+            var position = 0;
+            ayah.ayat = ayah.parts.map(function (part) {
+                var start = position;
+                position += part.text.length + 1;
+                var localRanges = ranges.map(function (range) { return [Math.max(start, range[0]) - start, Math.min(position - 1, range[1]) - start]; }).filter(function (range) { return range[1] > range[0]; });
+                return Object.assign({}, part, {text_with_highlight: highlightRanges(part.text, localRanges)});
+            });
             return ayah;
         }).filter(function (ayah) { return ayah.matched.length > 0; });
     };
@@ -714,6 +736,7 @@ myApp.controller('AyatSearchController', function ($scope, $window, $http, $rout
         }
 
         $scope.filteredAyat = filterAfterSuwar;
+        $scope.distinctAyahCount = new Set(filterAfterSuwar.reduce(function (ids, group) { return ids.concat(group.ayat.map(function (ayah) { return ayah.sura_id + ':' + ayah.verse_id; })); }, [])).size;
 
         if ($scope.changeCountsAsPerFilter) {
             $scope.countedAyahAttributes = countByAttributes($scope.filteredAyat, ['matched', 'sura_id']);
@@ -918,6 +941,10 @@ myApp.controller('AyatSearchController', function ($scope, $window, $http, $rout
         return previous && parts.includes($scope.queryBlocks[index].type) && parts.includes(previous.type)
             && !QuranQueryBuilder.separates(previous, $scope.queryBlocks[index]);
     };
+    $scope.hasSpaceBefore = function (index) {
+        var previous = $scope.queryBlocks.slice(0, index).filter(function (part) { return part.type !== 'exclude'; }).slice(-1)[0];
+        return previous && previous.type !== 'ayahBreak' && !['exclude', 'ayahBreak'].includes($scope.queryBlocks[index].type) && !$scope.canConnect(index);
+    };
     $scope.moveBlock = function (index, direction) {
         var destination = index + direction;
         if (destination < 0 || destination >= $scope.queryBlocks.length) return;
@@ -955,6 +982,7 @@ myApp.controller('AyatSearchController', function ($scope, $window, $http, $rout
 
     $scope.useExample = function (query) {
         $location.search({s: query});
+        $scope.reference = {ayah: null, surah: null};
         restoreBuilder(query);
         $scope.userSearchQuery = query;
         $scope.builderError = '';
@@ -971,6 +999,9 @@ myApp.controller('AyatSearchController', function ($scope, $window, $http, $rout
         var compiled = QuranQueryBuilder.compile($scope.queryBlocks);
         $scope.builderError = compiled.error || '';
         if (compiled.error) return;
+        if ($scope.reference.ayah !== null && (!Number.isInteger($scope.reference.ayah) || $scope.reference.ayah < 1 || $scope.reference.ayah > 286)) {
+            $scope.builderError = 'اختر رقم آية صحيحاً من 1 إلى 286.'; return;
+        }
         $scope.userSearchQuery = compiled.query;
         setExclusions(compiled);
         // Search explicitly even when the URL has not changed (for example,
@@ -989,6 +1020,8 @@ myApp.controller('AyatSearchController', function ($scope, $window, $http, $rout
                 scope: block.scope, choices: ['alternatives', 'exclude'].includes(block.type) ? block.choices.map(function (choice) { return {value: choice.value}; }) : undefined
             };
         });
+        $location.search("ayah", $scope.reference.ayah || null);
+        $location.search("surah", $scope.reference.surah || null);
         $location.search("s", compiled.query);
         $location.search("qb", JSON.stringify(blocks));
         $location.search("remove_harakah", $scope.shouldRemoveLastHarakah);

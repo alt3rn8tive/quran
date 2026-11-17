@@ -1,6 +1,7 @@
 /* Translate readable query blocks to the existing search language. */
 var QuranQueryBuilder = (function () {
     var types = [
+        {value: 'ayahBreak', label: 'فاصل آية', hint: 'تابع من نهاية الآية إلى بداية الآية التالية في السورة نفسها. أضف كلمات غير محددة لتجاوز كلمات.'},
         {value: 'text', label: 'كلمة أو عبارة', hint: 'اكتب النص، ثم اختر مطابقة هذا الجزء دون تغيير بقية الأجزاء.'},
         {value: 'alternatives', label: 'أحد هذه الخيارات', hint: 'تطابق كلمة أو عبارة واحدة من القائمة، دون الحاجة لكتابة رموز.'},
         {value: 'exclude', label: 'شرط استبعاد', hint: 'استبعد آيات كاملة أو كلمات مطابقة، دون تغيير ترتيب الأجزاء الأخرى.'},
@@ -154,6 +155,8 @@ var QuranQueryBuilder = (function () {
         if (!Array.isArray(blocks) || !blocks.length) {
             return {error: 'أضف جزءاً واحداً على الأقل لبناء البحث.'};
         }
+        var positives = blocks.filter(function (block) { return block && block.type !== 'exclude'; });
+        if (positives.some(function (block, index) { return block.type === 'ayahBreak' && (!index || index === positives.length - 1 || positives[index - 1].type === 'ayahBreak'); })) return {error: 'ضع فاصل الآية بين جزأين للبحث، دون فواصل متتالية.'};
         var query = '', exclusions = [], previousPositive = null;
         for (var i = 0; i < blocks.length; i++) {
             var block = blocks[i];
@@ -165,7 +168,9 @@ var QuranQueryBuilder = (function () {
             if (['text', 'context', 'between'].includes(block.type) && !validText(block.value)) {
                 return {error: 'أدخل نصاً عربياً في الجزء ' + (i + 1) + '، دون رموز البحث، أو احذف هذا الجزء.'};
             }
-            if (block.type === 'text') {
+            if (block.type === 'ayahBreak') {
+                token = '\uE004';
+            } else if (block.type === 'text') {
                 var matchMode = block.matchMode || 'contains';
                 if (!textModes.some(function (mode) { return mode.value === matchMode; })) return {error: 'اختر طريقة مطابقة الجزء ' + (i + 1) + '.'};
                 var words = block.value.trim().split(/\s+/).length;
@@ -241,15 +246,16 @@ var QuranQueryBuilder = (function () {
                         ? ' ' + captured + ' ' + block.value.trim() : block.value.trim() + ' ' + captured + ' ';
                 } else token = ' ' + captured + ' ';
             }
-            var separate = previousPositive && (block.join === 'space' || separates(previousPositive, block));
+            var separate = previousPositive && block.type !== 'ayahBreak' && previousPositive.type !== 'ayahBreak' && (block.join === 'space' || separates(previousPositive, block));
             query += (separate ? ' ' : '') + token;
             previousPositive = block;
         }
         if (!previousPositive) return {error: 'أضف كلمة أو جزءاً للبحث أولاً، ثم أضف شروط الاستبعاد.'};
-        return {query: query.replace(/\s+/g, ' '), exclusions: exclusions};
+        return {query: query.replace(/\s+/g, ' ').replace(/ *\uE004 */g, '\uE004'), exclusions: exclusions};
     }
 
     function preview(block) {
+        if (block.type === 'ayahBreak') return 'فاصل آية ← بداية الآية التالية في السورة نفسها';
         if (block.type === 'text') {
             var textMode = textModes.find(function (option) { return option.value === (block.matchMode || 'contains'); });
             return (textMode ? textMode.label : 'نص') + ' «' + (block.value || 'لم يُكتب بعد') + '»';
