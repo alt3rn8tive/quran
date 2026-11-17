@@ -102,15 +102,15 @@ describe('Query builder search integration', function () {
         root.$digest();
         expect(scope.resultsGroup.length).toBe(6);
         expect(scope.countedAyahAttributes.matched['اللَّهِ']).toBe(978);
-        expect(location.search().s).toBe('الله*');
-        expect(JSON.parse(location.search().qb)[1].type).toBe('optional');
+        expect(QuranSearchLink.parameters(location.search()).s).toBe('الله*');
+        expect(JSON.parse(QuranSearchLink.parameters(location.search()).qb)[1].type).toBe('optional');
     });
 
     it('keeps the last results and URL intact when an edited block is invalid', function () {
         scope.queryBlocks = [QuranQueryBuilder.create('text', 'الله')];
         scope.searchButtonClicked();
         root.$digest();
-        var query = location.search().s;
+        var query = QuranSearchLink.parameters(location.search()).s;
         var results = scope.resultsGroup.slice();
         scope.queryBlocks[0].value = '[';
         scope.builderChanged();
@@ -118,7 +118,7 @@ describe('Query builder search integration', function () {
         root.$digest();
         expect(scope.builderError).toBeTruthy();
         expect(scope.queryEdited).toBeTrue();
-        expect(location.search().s).toBe(query);
+        expect(QuranSearchLink.parameters(location.search()).s).toBe(query);
         expect(scope.resultsGroup).toEqual(results);
     });
     it('saves independent text rules and applies them to the real Quran search', function () {
@@ -128,7 +128,7 @@ describe('Query builder search integration', function () {
         scope.searchButtonClicked();
         root.$digest();
         expect(scope.filteredAyat.length).toBe(58);
-        expect(JSON.parse(location.search().qb)[0].matchMode).toBe('whole');
+        expect(JSON.parse(QuranSearchLink.parameters(location.search()).qb)[0].matchMode).toBe('whole');
     });
 
     it('saves symbol capture settings and returns captured words rather than the symbol', function () {
@@ -141,7 +141,7 @@ describe('Query builder search integration', function () {
         root.$digest();
         expect(scope.resultsGroup.length).toBeGreaterThan(0);
         expect(scope.resultsGroup.every(function (result) { return result.includes(' ') && !result.includes('ۘ'); })).toBeTrue();
-        var stored = JSON.parse(location.search().qb)[0];
+        var stored = JSON.parse(QuranSearchLink.parameters(location.search()).qb)[0];
         expect(stored.symbol).toBe('ۘ');
         expect(stored.symbolMode).toBe('before');
         expect(stored.count).toBe(2);
@@ -560,7 +560,7 @@ describe('Exclusion scopes, counts and highlights', function () {
         scope.$destroy(); scope = root.$new(); controller('AyatSearchController', {$scope: scope}); root.$digest();
         expect(ids()).toEqual([2, 3]);
         expect(scope.queryExclusions.length).toBe(1);
-        expect(JSON.parse(location.search().qb)[1].choices[0].value).toBe('فرعون');
+        expect(JSON.parse(QuranSearchLink.parameters(location.search()).qb)[1].choices[0].value).toBe('فرعون');
         run([positive]); expect(ids()).toEqual([1, 2, 3, 6]);
         expect(scope.queryExclusions).toEqual([]);
     });
@@ -646,12 +646,13 @@ describe('Cross-ayah searches', function () {
         scope.useSuwar = {'1': true}; root.$digest();
         scope.copySearchLink();
         var copied = scope.shareUrl;
-        expect(copied).toContain('%EE%80%84');
+        expect(copied).toMatch(/#!\/search\?q=v1\.[A-Za-z0-9_-]+$/);
         expect(copied).not.toMatch(/[\u0600-\u06ff\uE004\s<>"{}]/);
         var params = {};
         copied.split('?')[1].split('&').forEach(function (pair) {
             var parts = pair.split('='); params[decodeURIComponent(parts[0])] = decodeURIComponent(parts[1]);
         });
+        params = QuranSearchLink.parameters(params);
         expect(JSON.parse(params.qb)[1].type).toBe('ayahBreak');
         expect(params.filter_results).toBe(scope.resultsGroup[0]);
         scope.$destroy(); location.search(params); scope = root.$new();
@@ -661,4 +662,34 @@ describe('Cross-ayah searches', function () {
         expect(scope.reference).toEqual({ayah: 1, surah: 1});
     });
 
+});
+
+
+describe('URL-safe saved-search format', function () {
+    it('round trips Unicode, punctuation and all saved settings without raw URL syntax', function () {
+        var params = {s: 'ولكن (. . .) ', qb: JSON.stringify([QuranQueryBuilder.create('context', 'ولكن')]), filter_results: 'قال & رب#=?%+ ۝', ayah: 2, surah: 1, remove_harakah: false};
+        var encoded = QuranSearchLink.encode(params);
+        expect(encoded).toMatch(/^v1\.[A-Za-z0-9_-]+$/);
+        expect(QuranSearchLink.parameters({q: encoded})).toEqual(params);
+        expect(QuranSearchLink.parameters({q: 'v1.invalid'})).toEqual({q: 'v1.invalid'});
+    });
+    it('loads the reported old ولكن URL and restores the same results from its new URL', angular.mock.inject(function ($controller, $rootScope, $location, $httpBackend) {
+        var block = QuranQueryBuilder.create('context', 'ولكن'); block.count = 3;
+        $location.path('/search').search({s: 'ولكن (. . .) ', qb: JSON.stringify([block]), word_match: 'contains', filter_results: '', filter_suwar: ''}).hash('main-container');
+        var scope = $rootScope.$new();
+        $controller('AyatSearchController', {$scope: scope});
+        $httpBackend.whenGET('view/search.html').respond('');
+        $rootScope.$digest();
+        expect($location.search().q).toMatch(/^v1\.[A-Za-z0-9_-]+$/);
+        expect($location.search().qb).toBeUndefined();
+        expect(scope.queryBlocks[0].type).toBe('context'); expect(scope.queryBlocks[0].count).toBe(3);
+        expect(scope.savedQueryOnly).toBeFalse();
+        var counts = Object.assign({}, scope.countedAyahAttributes.matched);
+        expect(scope.filteredAyat.length).toBeGreaterThan(0);
+        scope.$destroy(); scope = $rootScope.$new();
+        $controller('AyatSearchController', {$scope: scope}); $rootScope.$digest();
+        expect(Object.assign({}, scope.countedAyahAttributes.matched)).toEqual(counts);
+        expect(scope.queryBlocks[0].value).toBe('ولكن'); scope.$destroy();
+    }));
+    beforeEach(angular.mock.module('myApp'));
 });

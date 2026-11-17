@@ -172,6 +172,31 @@ function getRegexPatternForString(text, config) {
     return text;
 }
 
+// Versioned base64url keeps browser copying and chat linkification from
+// decoding Arabic, spaces or structured query JSON into the visible URL.
+var QuranSearchLink = {
+    encode: function (params) {
+        var bytes = encodeURIComponent(JSON.stringify(params)).replace(/%([0-9A-F]{2})/g, function (_, hex) {
+            return String.fromCharCode(parseInt(hex, 16));
+        });
+        return 'v1.' + btoa(bytes).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    },
+    parameters: function (raw) {
+        if (typeof raw.q !== 'string' || !/^v1\.[A-Za-z0-9_-]+$/.test(raw.q)) return raw;
+        try {
+            var bytes = atob(raw.q.slice(3).replace(/-/g, '+').replace(/_/g, '/'));
+            var decoded = JSON.parse(decodeURIComponent(Array.from(bytes).map(function (byte) {
+                return '%' + byte.charCodeAt(0).toString(16).padStart(2, '0');
+            }).join('')));
+            if (!decoded || typeof decoded !== 'object' || Array.isArray(decoded)) return raw;
+            return Object.assign({}, decoded, Object.keys(raw).reduce(function (params, key) {
+                if (key !== 'q') params[key] = raw[key];
+                return params;
+            }, {}));
+        } catch (error) { return raw; }
+    }
+};
+
 var uniqueItems = function (data, key) {
     var result = new Set();
 
@@ -469,9 +494,15 @@ myApp.controller('SurahCtrl', function ($scope, $http, $routeParams, $location, 
 });
 
 myApp.controller('AyatSearchController', function ($scope, $window, $http, $routeParams, $location, $timeout, $anchorScroll) {
+    function searchParameters() { return QuranSearchLink.parameters($location.search()); }
+    function saveParameters(params) { $location.search({q: QuranSearchLink.encode(params)}); }
     allow_pagination($scope);
     //init filters
-    let urlQueryParameters = $location.search();
+    let urlQueryParameters = searchParameters();
+    if (urlQueryParameters.s && !$location.search().q) {
+        saveParameters(urlQueryParameters);
+        $location.replace();
+    }
     let filter_results = (urlQueryParameters["filter_results"] || "");
     if (filter_results != getTrueKeys($scope.useResults).join(",")) {
         $scope.useResults = mapToTrueObject(filter_results.split(","));
@@ -502,7 +533,7 @@ myApp.controller('AyatSearchController', function ($scope, $window, $http, $rout
     };
 
     // boolean or string, to be used in the matched strings in the sidebar
-    var removeLastHarakah = $location.search()["remove_harakah"];
+    var removeLastHarakah = searchParameters()["remove_harakah"];
     if (typeof removeLastHarakah === 'string' || removeLastHarakah instanceof String) {
         // as the browser will have the string value only in case of 'false'
         removeLastHarakah = removeLastHarakah !== 'false';
@@ -510,7 +541,7 @@ myApp.controller('AyatSearchController', function ($scope, $window, $http, $rout
     $scope.shouldRemoveLastHarakah = removeLastHarakah;
 
     // boolean or string, to search directly from the start of ayat
-    var searchOnlyFromBeginning = $location.search()["search_only_from_beginning"];
+    var searchOnlyFromBeginning = searchParameters()["search_only_from_beginning"];
     if (typeof searchOnlyFromBeginning === 'string' || searchOnlyFromBeginning instanceof String) {
         // as the browser will have the string value only in case of 'false'
         searchOnlyFromBeginning = searchOnlyFromBeginning !== 'false';
@@ -518,7 +549,7 @@ myApp.controller('AyatSearchController', function ($scope, $window, $http, $rout
     $scope.searchConfig.searchFromBeginning = searchOnlyFromBeginning;
 
     // boolean or string, to search directly from the end of ayat
-    var searchOnlyOnEnd = $location.search()["search_only_on_end"];
+    var searchOnlyOnEnd = searchParameters()["search_only_on_end"];
     if (typeof searchOnlyOnEnd === 'string' || searchOnlyOnEnd instanceof String) {
         // as the browser will have the string value only in case of 'false'
         searchOnlyOnEnd = searchOnlyOnEnd !== 'false';
@@ -526,13 +557,13 @@ myApp.controller('AyatSearchController', function ($scope, $window, $http, $rout
     $scope.searchConfig.searchOnEnd = searchOnlyOnEnd;
 
     // boolean or string, to exclude searching for part of words
-    var excludePartOfWords = $location.search()["exclude_part_of_words"];
+    var excludePartOfWords = searchParameters()["exclude_part_of_words"];
     if (typeof excludePartOfWords === 'string' || excludePartOfWords instanceof String) {
         // as the browser will have the string value only in case of 'false'
         excludePartOfWords = excludePartOfWords !== 'false';
     }
     $scope.searchConfig.excludePartOfWords = excludePartOfWords;
-    var savedWordMatch = $location.search().word_match;
+    var savedWordMatch = searchParameters().word_match;
     $scope.searchConfig.wordMatch = QuranQueryBuilder.wordModes.some(function (option) { return option.value === savedWordMatch; })
         ? savedWordMatch : (excludePartOfWords ? 'whole' : 'contains');
 
@@ -773,11 +804,11 @@ myApp.controller('AyatSearchController', function ($scope, $window, $http, $rout
         }
         // First fix the bug of having the useResults updated and causing the scroll position to reset to top, then uncomment this:
         // let filterResultsKeys = getTrueKeys($scope.useResults).join(",");
-        // if ($location.search()["filter_results"] !== filterResultsKeys) {
+        // if (searchParameters()["filter_results"] !== filterResultsKeys) {
         //     $location.search( "filter_results", filterResultsKeys);
         // }
         // let filterSuwarKeys = getTrueKeys($scope.useSuwar).join(",");
-        // if ($location.search()["filter_suwar"] !== filterSuwarKeys) {
+        // if (searchParameters()["filter_suwar"] !== filterSuwarKeys) {
         //     $location.search( "filter_suwar", filterSuwarKeys);
         // }
     }, true);
@@ -824,7 +855,7 @@ myApp.controller('AyatSearchController', function ($scope, $window, $http, $rout
 
     //just to test watcher
     var initSearchStr = '';
-    var search = ($location.search()["s"] || "");
+    var search = (searchParameters()["s"] || "");
 
     if (search != "") {
         initSearchStr = search;
@@ -866,7 +897,7 @@ myApp.controller('AyatSearchController', function ($scope, $window, $http, $rout
 
     function restoreBuilder(query) {
         var blocks = null;
-        var saved = $location.search().qb;
+        var saved = searchParameters().qb;
         if (typeof saved === 'string') {
             try {
                 var candidate = JSON.parse(saved);
@@ -1020,44 +1051,33 @@ myApp.controller('AyatSearchController', function ($scope, $window, $http, $rout
                 scope: block.scope, choices: ['alternatives', 'exclude'].includes(block.type) ? block.choices.map(function (choice) { return {value: choice.value}; }) : undefined
             };
         });
-        $location.search("ayah", $scope.reference.ayah || null);
-        $location.search("surah", $scope.reference.surah || null);
-        $location.search("s", compiled.query);
-        $location.search("qb", JSON.stringify(blocks));
-        $location.search("remove_harakah", $scope.shouldRemoveLastHarakah);
-        $location.search("search_only_from_beginning", $scope.searchConfig.searchFromBeginning);
-        $location.search("search_only_on_end", $scope.searchConfig.searchOnEnd);
-        $location.search("exclude_part_of_words", $scope.searchConfig.excludePartOfWords);
-        $location.search("word_match", $scope.searchConfig.wordMatch);
-        $location.search("filter_results", "");
-        $location.search("filter_suwar", "");
+        saveParameters({
+            ayah: $scope.reference.ayah || undefined, surah: $scope.reference.surah || undefined,
+            s: compiled.query, qb: JSON.stringify(blocks),
+            remove_harakah: $scope.shouldRemoveLastHarakah,
+            search_only_from_beginning: $scope.searchConfig.searchFromBeginning,
+            search_only_on_end: $scope.searchConfig.searchOnEnd,
+            exclude_part_of_words: $scope.searchConfig.excludePartOfWords,
+            word_match: $scope.searchConfig.wordMatch
+        });
     };
 
     // Function to update the URL with the current search parameters
     $scope.updateUrl = function () {
-        // Get the current search parameters from $location.search()
-        var currentSearchParams = $location.search();
+        var currentSearchParams = searchParameters();
 
         currentSearchParams.filter_results = getTrueKeys($scope.useResults).join(",");
         currentSearchParams.filter_suwar = getTrueKeys($scope.useSuwar).join(",");
 
-        // Set the updated search parameters using $location.search()
-        $location.search(currentSearchParams);
+        saveParameters(currentSearchParams);
     };
 
     $scope.copySearchLink = function () {
-        // Encode values once, including Arabic, JSON, boundary markers and
-        // punctuation in result filters. Never encode the entire URL at once.
-        var params = Object.assign({}, $location.search(), {
+        var params = Object.assign({}, searchParameters(), {
             filter_results: getTrueKeys($scope.useResults).join(','),
             filter_suwar: getTrueKeys($scope.useSuwar).join(',')
         });
-        var query = Object.keys(params).filter(function (key) {
-            return params[key] !== null && params[key] !== undefined && params[key] !== '';
-        }).map(function (key) {
-            return encodeURIComponent(key) + '=' + encodeURIComponent(String(params[key]));
-        }).join('&');
-        $scope.shareUrl = $location.absUrl().split('#')[0] + '#!/search?' + query;
+        $scope.shareUrl = $location.absUrl().split('#')[0] + '#!/search?q=' + QuranSearchLink.encode(params);
         $scope.copyLinkStatus = '';
         function fallback() {
             var input = document.getElementById('saved-search-link');
@@ -1092,7 +1112,7 @@ myApp.controller('AyatSearchController', function ($scope, $window, $http, $rout
         if ($location.path() != "/search") {
             return;
         }
-        let urlQueryParameters = $location.search();
+        let urlQueryParameters = searchParameters();
         let search = (urlQueryParameters["s"] || "");
         if (search !== $scope.userSearchQuery) {
             startSearchingByEnteredText(search);
