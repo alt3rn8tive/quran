@@ -1030,3 +1030,75 @@ input[type=checkbox] { accent-color: var(--accent); width: 18px; height: 18px; }
 .ayah-context { padding: .8rem; margin-block: .75rem; border-inline-start: 3px solid #a0b9af; background: #f3f6f4; border-radius: .5rem; }
 .context-label { font-size: .8rem; color: #526761; }
 .ayah-context p { margin-block: .5rem; }
+
+/* Surah statistics: overview cards and browsable word/letter/verse distributions. */
+.surah-stats { max-width: 1120px; margin: 0 auto; padding: 32px 24px 60px; }
+.stats-heading, .stats-section-heading { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem; }
+.stats-heading { margin-bottom: 1.5rem; }
+.stats-reading-link { color: var(--accent); font-weight: bold; }
+.stats-controls, .stats-word-controls { display: flex; flex-wrap: wrap; align-items: end; gap: 1rem; }
+.stats-controls { padding: 1.2rem; background: #e8f0e9; border-radius: 14px; }
+.stats-controls label, .stats-word-controls label { display: flex; flex: 1 1 220px; min-width: 0; flex-direction: column; gap: .4rem; }
+.surah-stats select, .surah-stats input[type=text] { width: 100%; box-sizing: border-box; min-width: 0; min-height: 44px; height: auto; border: 1px solid #a6c0b3; border-radius: 8px; padding: .7rem; background: white; color: inherit; font: inherit; }
+.stats-overview, .stats-panel { padding: 1.5rem; margin-top: 1.5rem; border: 1px solid var(--line); border-radius: 16px; background: white; }
+.stats-overview h2, .stats-panel h2, .stats-panel h3 { margin-top: 0; }
+.stats-metrics { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 1rem; margin-block: 1rem; }
+.stats-metrics > div { display: grid; padding: 1rem; border-radius: 12px; background: #f3f6ef; border-top: 3px solid #92b3a0; }
+.stats-metrics strong { font-size: clamp(1.5rem,3vw,2.3rem); color: #176653; }
+.stats-metrics span { color: #526761; font-size: .9rem; }
+.stats-extremes { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 1rem; }
+.stats-extremes > div { padding: 1rem; background: #faf8f0; border-radius: 12px; }
+.stats-extremes h3 { font-size: 1rem; margin: 0; }
+.stats-extremes p { margin-block: .5rem; }
+.stats-extremes button { margin-inline-end: .4rem; margin-block-end: .4rem; }
+.stats-method { margin-top: 1rem; padding: .8rem 0; border-top: 1px solid var(--line); color: #526761; }
+.stats-method p { font-size: .9rem; }
+.stats-tabs { display: flex; flex-wrap: wrap; gap: .6rem; margin-top: 1.5rem; }
+.stats-tabs button { flex: 1; }
+.stats-tabs button.active { background: var(--accent); color: white; }
+.stats-word-controls { margin-block: 1rem; }
+.stats-word-controls .stats-once { flex-direction: row; align-items: center; flex: 1 1 100%; }
+.stats-table-wrap { overflow-x: auto; max-width: 100%; }
+.stats-word-table { width: 100%; border-collapse: collapse; margin-block: 1rem; }
+.stats-word-table th, .stats-word-table td { padding: .75rem; text-align: right; border-bottom: 1px solid #dce7df; }
+.stats-word-table th { background: #f3f6ef; font-size: .85rem; }
+.stats-word-table tr.selected { background: #fff7de; }
+.stats-word-button { font-size: 1.15rem; background: transparent; border-color: transparent; padding: .2rem .4rem; overflow-wrap: anywhere; max-width: 100%; }
+.stats-frequency-track { height: 4px; background: #e5eee7; border-radius: 5px; overflow: hidden; }
+.stats-frequency-track span { display: block; height: 100%; background: #65a28b; }
+.stats-letter-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(130px,1fr)); padding: 0; gap: 1rem; list-style: none; }
+.stats-letter-grid li { display: grid; gap: .4rem; padding: 1rem; background: #f5f8f4; border: 1px solid #dce7df; border-radius: 12px; text-align: center; }
+.stats-letter-grid strong { font-size: 2.3rem; color: var(--accent); }
+.stats-letter-grid small { color: #526761; }
+.stats-occurrences { padding: 1rem; background: #f8f7ef; border-radius: 12px; border: 1px solid #e7dfc2; }
+.stats-occurrences article { padding-block: 1rem; border-top: 1px solid #dfdfd0; }
+.stats-occurrences article p, .stats-selected-verse p { font-size: 1.35rem; line-height: 2.4; }
+.stats-occurrences article a { color: var(--accent); font-size: .9rem; }
+.stats-chart-label { color: #526761; font-size: .85rem; }
+.stats-chart-scroll { max-width: 100%; overflow-x: auto; border-bottom: 1px solid #a6c0b3; padding: .5rem; }
+.stats-verse-chart { display: flex; align-items: stretch; gap: 7px; height: 230px; min-width: 100%; width: max-content; }
+.stats-verse-bar { display: flex; flex-direction: column; width: 30px; min-width: 30px; height: 100%; padding: 0; border: 0; background: transparent; border-radius: 4px 4px 0 0; }
+.stats-bar-space { flex: 1; display: flex; align-items: flex-end; width: 100%; }
+.stats-bar-fill { display: block; width: 100%; min-height: 2px; background: #83b49e; border-radius: 4px 4px 0 0; }
+.stats-verse-bar.active .stats-bar-fill { background: #b1823b; }
+.stats-verse-bar small { display: block; width: 100%; text-align: center; font-size: .7rem; padding-top: .4rem; }
+.stats-selected-verse { padding: 1rem; background: #f5f7f1; margin-top: 1.2rem; border-radius: 12px; }
+.stats-selected-verse > span, .stats-selected-verse > a { display: block; margin-top: .5rem; }
+.stats-share { margin-top: 1rem; overflow-wrap: anywhere; }
+.stats-share label { display: grid; gap: .4rem; }
+@media (max-width:600px) {
+    .surah-stats { padding: 20px 12px 36px; }
+    .stats-overview, .stats-panel { padding: 1rem; }
+    .stats-metrics { grid-template-columns: repeat(2,minmax(0,1fr)); gap: .65rem; }
+    .stats-metrics > div { padding: .75rem; }
+    .stats-extremes { grid-template-columns: 1fr; }
+    .stats-controls > button { flex: 1 1 100%; }
+    .stats-word-table td, .stats-word-table th { padding: .5rem; }
+    .stats-section-heading > button { width: 100%; }
+    .stats-letter-grid { grid-template-columns: repeat(2,minmax(0,1fr)); gap: .65rem; }
+    .stats-tabs button { padding-inline: .5rem; font-size: .9rem; }
+}
+
+.stats-heading { background: transparent; border: 0; }
+.stats-heading > div { min-width: 0; flex: 1 1 260px; }
+.surah-stats h2 { color: var(--ink); }

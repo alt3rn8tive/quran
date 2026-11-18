@@ -455,6 +455,11 @@ myApp.config(function ($routeProvider) {
             templateUrl: "view/surah.html",
             controller: "SurahCtrl"
         })
+        .when("/statistics", {
+            templateUrl: "view/statistics.html",
+            controller: "SurahStatisticsController",
+            reloadOnSearch: false
+        })
         .when("/search-features", {
             templateUrl: "view/search-features.html",
             controller: "SearchHelpController"
