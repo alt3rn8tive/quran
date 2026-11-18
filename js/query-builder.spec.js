@@ -103,7 +103,8 @@ describe('Query builder search integration', function () {
         expect(scope.resultsGroup.length).toBe(6);
         expect(scope.countedAyahAttributes.matched['اللَّهِ']).toBe(978);
         expect(QuranSearchLink.parameters(location.search()).s).toBe('الله*');
-        expect(JSON.parse(QuranSearchLink.parameters(location.search()).qb)[1].type).toBe('optional');
+        expect(JSON.parse(QuranSearchLink.parameters(location.search()).qb)[1].type).toBe('letters');
+        expect(JSON.parse(QuranSearchLink.parameters(location.search()).qb)[1].repetition).toBe('zeroOrMore');
     });
 
     it('keeps the last results and URL intact when an edited block is invalid', function () {

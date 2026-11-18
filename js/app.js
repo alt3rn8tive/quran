@@ -175,7 +175,28 @@ function getRegexPatternForString(text, config) {
 // Versioned base64url keeps browser copying and chat linkification from
 // decoding Arabic, spaces or structured query JSON into the visible URL.
 var QuranSearchLink = {
+    compact: function (params) {
+        var compact = Object.assign({}, params);
+        try {
+            var blocks = QuranQueryBuilder.normalise(JSON.parse(params.qb));
+            if (QuranQueryBuilder.compile(blocks).query === params.s) {
+                compact.qb = JSON.stringify(blocks.map(function (block) {
+                    var defaults = QuranQueryBuilder.create(block.type), result = {type: block.type};
+                    Object.keys(defaults).forEach(function (key) {
+                        if (key !== 'type' && JSON.stringify(block[key]) !== JSON.stringify(defaults[key])) result[key] = block[key];
+                    });
+                    return result;
+                }));
+            }
+        } catch (error) { /* Preserve older advanced links verbatim. */ }
+        Object.keys(compact).forEach(function (key) {
+            if (compact[key] === undefined || compact[key] === null || compact[key] === '') delete compact[key];
+        });
+        if (compact.word_match === 'contains' && !compact.exclude_part_of_words) delete compact.word_match;
+        return compact;
+    },
     encode: function (params) {
+        params = QuranSearchLink.compact(params);
         var bytes = encodeURIComponent(JSON.stringify(params)).replace(/%([0-9A-F]{2})/g, function (_, hex) {
             return String.fromCharCode(parseInt(hex, 16));
         });
@@ -189,11 +210,73 @@ var QuranSearchLink = {
                 return '%' + byte.charCodeAt(0).toString(16).padStart(2, '0');
             }).join('')));
             if (!decoded || typeof decoded !== 'object' || Array.isArray(decoded)) return raw;
+            if (typeof decoded.qb === 'string') {
+                try {
+                    var blocks = JSON.parse(decoded.qb);
+                    if (Array.isArray(blocks)) decoded.qb = JSON.stringify(QuranQueryBuilder.normalise(blocks));
+                } catch (error) { /* Legacy builder validation handles invalid data. */ }
+            }
             return Object.assign({}, decoded, Object.keys(raw).reduce(function (params, key) {
                 if (key !== 'q') params[key] = raw[key];
                 return params;
             }, {}));
         } catch (error) { return raw; }
+    }
+};
+
+// Counts and exports always use the same filtered result groups.
+var QuranResults = {
+    summary: function (groups) {
+        var ayat = new Set(), values = new Set(), occurrences = 0, capturedValues = 0;
+        groups.forEach(function (group) {
+            occurrences += group.occurrenceCount;
+            capturedValues += group.matched.length;
+            group.matched.forEach(function (value) { values.add(value); });
+            group.ayat.forEach(function (ayah) { ayat.add(ayah.sura_id + ':' + ayah.verse_id); });
+        });
+        return {groups: groups.length, ayat: ayat.size, occurrences: occurrences, values: capturedValues, distinctValues: values.size};
+    },
+    csv: function (rows) {
+        return '\uFEFF' + rows.map(function (row) {
+            return row.map(function (cell) {
+                var text = String(cell === null || cell === undefined ? '' : cell);
+                if (/^[=+@\-\t\r]/.test(text)) text = "'" + text;
+                return '"' + text.replace(/"/g, '""') + '"';
+            }).join(',');
+        }).join('\r\n') + '\r\n';
+    },
+    frequencyRows: function (groups, suwar, base) {
+        var counts = new Map();
+        groups.forEach(function (group) {
+            group.matched.forEach(function (value) {
+                if (!counts.has(value)) counts.set(value, {count: 0, ayat: new Map()});
+                var entry = counts.get(value); entry.count++;
+                group.ayat.forEach(function (ayah) { entry.ayat.set(ayah.sura_id + ':' + ayah.verse_id, ayah); });
+            });
+        });
+        return [['النص المطابق أو الملتقط', 'عدد التكرارات', 'السور المشاركة', 'مراجع الآيات المشاركة', 'روابط الآيات المشاركة']].concat(Array.from(counts).sort(function (a, b) {
+            return b[1].count - a[1].count || a[0].localeCompare(b[0]);
+        }).map(function (item) {
+            var ayat = Array.from(item[1].ayat.values());
+            var titles = new Set(ayat.map(function (ayah) { return suwar ? suwar[ayah.sura_id - 1].title : String(ayah.sura_id); }));
+            return [item[0], item[1].count, Array.from(titles).join('، '), Array.from(item[1].ayat.keys()).join('، '), ayat.map(function (ayah) {
+                return (base || '') + '#!/surah?id=' + ayah.sura_id + '#ayah-' + ayah.verse_id;
+            }).join('\n')];
+        }));
+    },
+    ayahRows: function (groups, suwar, base) {
+        var ayat = new Map();
+        groups.forEach(function (group, index) {
+            group.ayat.forEach(function (ayah) {
+                var key = ayah.sura_id + ':' + ayah.verse_id;
+                if (!ayat.has(key)) ayat.set(key, {ayah: ayah, groups: []});
+                ayat.get(key).groups.push(index + 1);
+            });
+        });
+        return [['السورة', 'رقم السورة', 'رقم الآية', 'نص الآية', 'مجموعات المطابقة', 'الرابط']].concat(Array.from(ayat.values()).map(function (item) {
+            var ayah = item.ayah;
+            return [suwar[ayah.sura_id - 1].title, ayah.sura_id, ayah.verse_id, ayah.text.trim(), item.groups.join('، '), base + '#!/surah?id=' + ayah.sura_id + '#ayah-' + ayah.verse_id];
+        }));
     }
 };
 
@@ -381,6 +464,28 @@ myApp.config(function ($routeProvider) {
         });
 });
 
+// Version templates as well as scripts, so a cached view cannot outlive its code.
+myApp.config(function ($httpProvider) {
+    $httpProvider.interceptors.push(function () {
+        return {request: function (config) {
+            if (typeof QuranRelease !== 'undefined' && /^view\/[^?]+\.html$/.test(config.url)) config.url += '?v=' + QuranRelease.current;
+            return config;
+        }};
+    });
+});
+myApp.run(function ($rootScope, $window) {
+    if (typeof QuranRelease === 'undefined') return;
+    $rootScope.availableRelease = QuranRelease.pending;
+    $rootScope.refreshApp = function () { QuranRelease.refresh($rootScope.availableRelease); };
+    function checkForUpdate() {
+        QuranRelease.check().then(function (build) {
+            if (build && build !== QuranRelease.current) $rootScope.$evalAsync(function () { $rootScope.availableRelease = build; });
+        });
+    }
+    $window.setInterval(checkForUpdate, 300000);
+    document.addEventListener('visibilitychange', function () { if (!document.hidden) checkForUpdate(); });
+});
+
 myApp.directive('scrollContainer', function ($timeout) {
     return {
         restrict: 'C', // Apply this directive to elements with the class 'scroll-container'
@@ -496,6 +601,11 @@ myApp.controller('SurahCtrl', function ($scope, $http, $routeParams, $location, 
 myApp.controller('AyatSearchController', function ($scope, $window, $http, $routeParams, $location, $timeout, $anchorScroll) {
     function searchParameters() { return QuranSearchLink.parameters($location.search()); }
     function saveParameters(params) { $location.search({q: QuranSearchLink.encode(params)}); }
+    function publicBaseUrl() {
+        var url = new URL($location.absUrl());
+        url.hash = ''; url.searchParams.delete('release');
+        return url.href;
+    }
     allow_pagination($scope);
     //init filters
     let urlQueryParameters = searchParameters();
@@ -611,6 +721,7 @@ myApp.controller('AyatSearchController', function ($scope, $window, $http, $rout
             var ayah = Object.assign({}, source);
             ayah.exact_match = [];
             ayah.matched = [];
+            ayah.occurrenceCount = 0;
             var ranges = [], match;
             $scope.searchQueryRegex.lastIndex = 0;
             while ((match = $scope.searchQueryRegex.exec(ayah.text))) {
@@ -618,6 +729,7 @@ myApp.controller('AyatSearchController', function ($scope, $window, $http, $rout
                     if ($scope.searchQueryRegex.lastIndex === match.index) $scope.searchQueryRegex.lastIndex++;
                     continue;
                 }
+                if (match.length > 1) $scope.resultsHaveCaptures = true;
                 var offset = match.length > 1 ? 1 : 0;
                 var found = match.slice(offset).filter(function (value, index) {
                     if (typeof value !== 'string' || !value.trim()) return false;
@@ -626,6 +738,7 @@ myApp.controller('AyatSearchController', function ($scope, $window, $http, $rout
                     ranges.push(range);
                     return true;
                 });
+                if (found.length) ayah.occurrenceCount++;
                 if (!wordRules && found.length) ranges.push(match.indices[0]);
                 found = found.map(function (value) { return value.replace(/\uE004/g, '۝'); });
                 ayah.exact_match = ayah.exact_match.concat(found);
@@ -652,6 +765,8 @@ myApp.controller('AyatSearchController', function ($scope, $window, $http, $rout
             return;
         }
 
+        $scope.resultsCrossAyah = ($scope.userSearchQuery || '').includes('\uE004');
+        $scope.resultsHaveCaptures = ($scope.queryBlocks || []).some(function (block) { return ['capture', 'context'].includes(block.type) || (block.type === 'symbol' && block.symbolMode !== 'only'); });
         $scope.foundAyat = matchAyat(newValue);
         $scope.foundAyat = $scope.foundAyat.filter(function (item) {
             return item['matched'] !== null;
@@ -767,6 +882,7 @@ myApp.controller('AyatSearchController', function ($scope, $window, $http, $rout
         }
 
         $scope.filteredAyat = filterAfterSuwar;
+        $scope.resultStats = QuranResults.summary(filterAfterSuwar);
         $scope.distinctAyahCount = new Set(filterAfterSuwar.reduce(function (ids, group) { return ids.concat(group.ayat.map(function (ayah) { return ayah.sura_id + ':' + ayah.verse_id; })); }, [])).size;
 
         if ($scope.changeCountsAsPerFilter) {
@@ -1025,6 +1141,32 @@ myApp.controller('AyatSearchController', function ($scope, $window, $http, $rout
         startSearchingByEnteredText(query);
     };
 
+    $scope.loadPreset = function (name) {
+        function part(type, value, extra) { return Object.assign(QuranQueryBuilder.create(type, value), extra || {}); }
+        var presets = {
+            crossAyah: [part('text', 'العالمين', {matchMode: 'whole'}), part('ayahBreak'), part('text', 'الرحمن', {matchMode: 'whole'})],
+            exclusion: [part('text', 'علم'), part('exclude', '', {scope: 'word', matchMode: 'ends', choices: [{value: 'ون'}]})],
+            capture: [part('context', 'ولكن', {count: 3, direction: 'after'})]
+        };
+        if (!presets[name]) return;
+        $scope.queryBlocks = presets[name];
+        $scope.queryBlocks.forEach(function (block) { block.id = ++nextBlockId; });
+        $scope.savedQueryOnly = false;
+        $scope.reference = {ayah: null, surah: null};
+        $scope.searchConfig = {searchFromBeginning: false, searchOnEnd: false, excludePartOfWords: false, wordMatch: 'contains'};
+        $scope.shouldRemoveLastHarakah = false;
+        $scope.searchButtonClicked();
+    };
+
+    $scope.exportResults = function (kind) {
+        var rows = kind === 'ayat' ? QuranResults.ayahRows($scope.filteredAyat, all_suwar, publicBaseUrl()) : QuranResults.frequencyRows($scope.filteredAyat, all_suwar, publicBaseUrl());
+        var blob = new $window.Blob([QuranResults.csv(rows)], {type: 'text/csv;charset=utf-8'});
+        var url = $window.URL.createObjectURL(blob), link = document.createElement('a');
+        link.href = url; link.download = kind === 'ayat' ? 'quran-ayat.csv' : 'quran-frequencies.csv';
+        document.body.appendChild(link); link.click(); link.remove();
+        $timeout(function () { $window.URL.revokeObjectURL(url); }, 1000, false);
+    };
+
     $scope.searchButtonClicked = function () {
         if ($scope.savedQueryOnly) return;
         var compiled = QuranQueryBuilder.compile($scope.queryBlocks);
@@ -1077,7 +1219,7 @@ myApp.controller('AyatSearchController', function ($scope, $window, $http, $rout
             filter_results: getTrueKeys($scope.useResults).join(','),
             filter_suwar: getTrueKeys($scope.useSuwar).join(',')
         });
-        $scope.shareUrl = $location.absUrl().split('#')[0] + '#!/search?q=' + QuranSearchLink.encode(params);
+        $scope.shareUrl = publicBaseUrl() + '#!/search?q=' + QuranSearchLink.encode(params);
         $scope.copyLinkStatus = '';
         function fallback() {
             var input = document.getElementById('saved-search-link');

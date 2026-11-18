@@ -10,5 +10,9 @@
     "angular": "^1.8.2",
     "angular-route": "^1.8.2",
     "angular-sanitize": "^1.8.2"
+  },
+  "scripts": {
+    "release": "node scripts/prepare-release.cjs",
+    "check:release": "node scripts/prepare-release.cjs --check"
   }
 }

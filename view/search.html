@@ -200,7 +200,10 @@
             </div>
         </form>
         <div class="quick-examples" aria-label="أمثلة جاهزة">
-            <span>جرّب مثالاً:</span>
+            <span>جرّب مثالاً ثم عدّل أجزاءه:</span>
+            <button type="button" ng-click="loadPreset('crossAyah')">عبر آيتين: العالمين ← الرحمن</button>
+            <button type="button" ng-click="loadPreset('exclusion')">«علم» مع استبعاد الكلمات المنتهية بـ«ون»</button>
+            <button type="button" ng-click="loadPreset('capture')">جمع ثلاث كلمات بعد «ولكن»</button>
             <button type="button" ng-click="useExample('۩')">مواضع السجدة</button>
             <button type="button" ng-click="useExample('رحمة')">كلمة دون تشكيل</button>
             <button type="button" ng-click="useExample('جِن')">حركة محددة</button>
@@ -244,7 +247,16 @@
         </label>
         <span role="status" aria-live="polite">{{copyLinkStatus}}</span>
     </div>
-    <div class="results-summary" ng-if="isSearchDone" role="status">{{filteredAyat.length}} {{isCrossAyah() ? 'مجموعة مطابقة' : 'آية'}} · {{distinctAyahCount}} آية مختلفة · {{resultsGroup.length}} نتيجة مختلفة <span>اختر كلمة أو سورة لتصفية الآيات.</span></div>
+    <div class="results-summary" ng-if="isSearchDone" role="status">
+        <span>{{resultStats.occurrences}} مطابقة · {{resultStats.groups}} {{resultsCrossAyah ? 'مجموعة آيات' : 'آية مطابقة'}} · {{resultStats.ayat}} آية مختلفة</span>
+        <span>{{resultStats.distinctValues}} {{resultsHaveCaptures ? 'نص ملتقط مختلف' : 'نص مطابق مختلف'}} · {{resultStats.values}} {{resultsHaveCaptures ? 'تكرار للنصوص الملتقطة' : 'تكرار للنصوص المطابقة'}}</span>
+        <small>الأعداد تخص المجموعات المعروضة بعد التصفية. المطابقة موضع واحد؛ قد يجمع أكثر من نص ملتقط. قد تتداخل مجموعات الآيات.</small>
+    </div>
+    <div class="export-results" ng-if="isSearchDone && filteredAyat.length">
+        <button type="button" ng-click="exportResults('ayat')">تصدير الآيات CSV</button>
+        <button type="button" ng-click="exportResults('frequencies')">تصدير التكرارات CSV</button>
+        <span>يشمل التصدير النتائج المصفّاة في جميع الصفحات، وتُصدّر كل آية مرة واحدة.</span>
+    </div>
     <!--<input id="hide-sidebar" name="h" type="checkbox">-->
     <!--<label for="hide-sidebar">خيارات البحث</label>-->
 
@@ -268,11 +280,13 @@
         <!--        <label for="show-only-selected-results"><input type="checkbox" ng-model="showOnlySelectedResults" id="show-only-selected-results">عرض فقط ما تم اختياره من نتائج البحث؟ </label>-->
         <!--    </div>-->
         <div class="sidebar-title">
-            <b>{{isCrossAyah() ? 'عدد مجموعات المطابقة' : 'عدد الآيات'}}
+            <b>{{resultsCrossAyah ? 'عدد مجموعات المطابقة' : 'عدد الآيات'}}
                 ({{ filteredAyat.length }})</b>
         </div>
         <div class="filter">
             <button class="btn pull-left" ng-click="clearResultsFilter()">إزالة التحديد</button>
+            <p class="field-hint">التكرارات في {{changeCountsAsPerFilter ? 'المجموعات المصفّاة' : 'كل نتائج البحث'}}.</p>
+            <label><input type="checkbox" ng-model="changeCountsAsPerFilter"> حساب التكرارات بحسب التصفية</label>
             <span class="filter--title">
 نتائج البحث
             ({{ resultsGroup.length }})
