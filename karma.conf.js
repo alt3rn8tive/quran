@@ -24,9 +24,11 @@ module.exports = function(config) {
       'js/data.js',
       'js/query-builder.js',
       'js/app.js',
+      'js/search-library.js',
       'js/ayat-search-controller.spec.js',
       'js/query-builder.spec.js',
-      'js/results-features.spec.js'
+      'js/results-features.spec.js',
+      'js/search-library.spec.js'
     ],
 
 

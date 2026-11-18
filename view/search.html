@@ -6,6 +6,43 @@
             <h1>ابحث في القرآن بطريقتك</h1>
             <p class="description">اكتب كلمة أو جزءاً منها. أضف الحركات التي تريد مطابقتها، واترك الباقي دون تشكيل.</p>
         </div>
+        <details class="search-library">
+            <summary>مكتبة أبحاثي <span>({{libraryEntries.length}})</span></summary>
+            <p class="field-hint">تُحفظ في هذا المتصفح فقط. صدّر نسخة احتياطية لنقلها إلى جهاز آخر أو لحمايتها عند مسح بيانات المتصفح.</p>
+            <form class="library-save" ng-submit="saveToLibrary()" ng-if="isSearchDone">
+                <label>اسم البحث <input type="text" ng-model="libraryForm.name" maxlength="120" required placeholder="مثلاً: كلمات بعد ولكن"></label>
+                <label>المجموعة <input type="text" ng-model="libraryForm.group" maxlength="80" list="library-group-options" placeholder="عام"></label>
+                <button type="submit" ng-disabled="queryEdited">حفظ البحث الحالي</button>
+                <span class="field-hint" ng-if="queryEdited">نفّذ البحث بعد تعديل الأجزاء، ثم احفظه.</span>
+            </form>
+            <datalist id="library-group-options"><option ng-repeat="group in libraryGroups" value="{{group}}"></option></datalist>
+            <div class="library-tools">
+                <label>تصفية المكتبة حسب المجموعة <select ng-model="libraryForm.filter" ng-options="group for group in libraryGroups"><option value="">كل المجموعات</option></select></label>
+                <button type="button" ng-click="exportLibrary()" ng-disabled="!libraryEntries.length">تصدير المكتبة JSON</button>
+                <label class="library-import-label">استيراد مكتبة JSON <input type="file" accept="application/json,.json" library-import ng-disabled="importingLibrary"></label>
+            </div>
+            <p class="library-status" role="status" aria-live="polite">{{libraryStatus}}</p>
+            <button type="button" ng-if="removedLibrarySearch" ng-click="undoLibraryRemove()">التراجع عن حذف البحث</button>
+            <p ng-if="!libraryEntries.length">لا توجد أبحاث محفوظة بعد. نفّذ بحثاً ثم سمّه واحفظه هنا.</p>
+            <ul class="library-list" ng-if="libraryEntries.length">
+                <li ng-repeat="saved in libraryEntries | filter:libraryMatchesGroup track by saved.id">
+                    <div ng-if="!libraryEdit || libraryEdit.id !== saved.id" class="library-entry">
+                        <div><strong>{{saved.name}}</strong><span class="library-group">{{saved.group}}</span></div>
+                        <div class="library-entry-actions">
+                            <button type="button" ng-click="openLibrarySearch(saved)" aria-label="فتح البحث {{saved.name}}">فتح</button>
+                            <button type="button" ng-click="editLibrarySearch(saved)" aria-label="تعديل البحث {{saved.name}}">تعديل الاسم والمجموعة</button>
+                            <button type="button" ng-click="removeLibrarySearch(saved)" aria-label="حذف البحث {{saved.name}}">حذف</button>
+                        </div>
+                    </div>
+                    <form ng-if="libraryEdit.id === saved.id" ng-submit="applyLibraryEdit()" class="library-edit">
+                        <label>اسم البحث <input type="text" ng-model="libraryEdit.name" maxlength="120" required></label>
+                        <label>المجموعة <input type="text" ng-model="libraryEdit.group" maxlength="80" list="library-group-options"></label>
+                        <button type="submit">حفظ التعديل</button><button type="button" ng-click="cancelLibraryEdit()">إلغاء</button>
+                    </form>
+                </li>
+            </ul>
+            <p ng-if="libraryEntries.length && !(libraryEntries | filter:libraryMatchesGroup).length">لا توجد أبحاث في هذه المجموعة.</p>
+        </details>
         <div class="saved-query-note" ng-if="savedQueryOnly" role="status">
             <strong>نتائج بحث محفوظ بصيغة متقدمة</strong>
             <p>يعمل هذا الرابط كما هو. لإنشاء بحث مختلف باستخدام الأجزاء، ابدأ بحثاً جديداً.</p>
@@ -328,6 +365,15 @@
         <div>
             <ul id="data-list">
                 <li ng-repeat="searchResultItem in pagedItems[currentPage] | filter:query">
+                    <div class="context-actions">
+                        <button type="button" ng-click="toggleResultContext(searchResultItem, 'before')" ng-disabled="!contextAyah(searchResultItem, 'before')" aria-expanded="{{!!searchResultItem.showPrevious}}" aria-controls="context-before-{{searchResultItem.sura_id}}-{{searchResultItem.verse_id}}">{{searchResultItem.showPrevious ? 'إخفاء الآية السابقة' : 'إظهار الآية السابقة'}}</button>
+                        <button type="button" ng-click="toggleResultContext(searchResultItem, 'after')" ng-disabled="!contextAyah(searchResultItem, 'after')" aria-expanded="{{!!searchResultItem.showNext}}" aria-controls="context-after-{{searchResultItem.sura_id}}-{{searchResultItem.verse_id}}">{{searchResultItem.showNext ? 'إخفاء الآية التالية' : 'إظهار الآية التالية'}}</button>
+                    </div>
+                    <div class="ayah-context" id="context-before-{{searchResultItem.sura_id}}-{{searchResultItem.verse_id}}" ng-if="searchResultItem.showPrevious && contextAyah(searchResultItem, 'before')" ng-init="previousAyah = contextAyah(searchResultItem, 'before')">
+                        <span class="context-label">الآية السابقة للسياق</span>
+                        <p ng-bind="previousAyah.text"></p>
+                        <a class="ayah-source" ng-href="#!/surah?id={{previousAyah.sura_id}}#ayah-{{previousAyah.verse_id}}">سورة {{suwar[previousAyah.sura_id - 1].title}} - الآية {{previousAyah.verse_id}}</a>
+                    </div>
                     <p ng-repeat="ayah in searchResultItem.ayat"><span ng-bind-html="ayah.text_with_highlight"></span>
                         <b class="ayah-source">
                             <a href="#!/surah?id={{ ayah.sura_id }}#ayah-{{ ayah.verse_id }}">
@@ -339,6 +385,11 @@
                             </a>
                         </b>
                     </p>
+                    <div class="ayah-context" id="context-after-{{searchResultItem.sura_id}}-{{searchResultItem.verse_id}}" ng-if="searchResultItem.showNext && contextAyah(searchResultItem, 'after')" ng-init="nextAyah = contextAyah(searchResultItem, 'after')">
+                        <span class="context-label">الآية التالية للسياق</span>
+                        <p ng-bind="nextAyah.text"></p>
+                        <a class="ayah-source" ng-href="#!/surah?id={{nextAyah.sura_id}}#ayah-{{nextAyah.verse_id}}">سورة {{suwar[nextAyah.sura_id - 1].title}} - الآية {{nextAyah.verse_id}}</a>
+                    </div>
                 </li>
             </ul>
         </div>

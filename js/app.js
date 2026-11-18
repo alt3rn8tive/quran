@@ -598,7 +598,7 @@ myApp.controller('SurahCtrl', function ($scope, $http, $routeParams, $location, 
     });
 });
 
-myApp.controller('AyatSearchController', function ($scope, $window, $http, $routeParams, $location, $timeout, $anchorScroll) {
+myApp.controller('AyatSearchController', function ($scope, $window, $http, $routeParams, $location, $timeout, $anchorScroll, $route, QuranLibraryStore) {
     function searchParameters() { return QuranSearchLink.parameters($location.search()); }
     function saveParameters(params) { $location.search({q: QuranSearchLink.encode(params)}); }
     function publicBaseUrl() {
@@ -606,6 +606,99 @@ myApp.controller('AyatSearchController', function ($scope, $window, $http, $rout
         url.hash = ''; url.searchParams.delete('release');
         return url.href;
     }
+    function currentSearchParameters() {
+        return Object.assign({}, searchParameters(), {
+            filter_results: getTrueKeys($scope.useResults).join(','),
+            filter_suwar: getTrueKeys($scope.useSuwar).join(',')
+        });
+    }
+    function download(contents, type, filename) {
+        var blob = new $window.Blob([contents], {type:type});
+        var url = $window.URL.createObjectURL(blob), link = document.createElement('a');
+        link.href = url; link.download = filename;
+        document.body.appendChild(link); link.click(); link.remove();
+        $timeout(function () { $window.URL.revokeObjectURL(url); }, 1000, false);
+    }
+    $scope.libraryForm = {name:'', group:'عام', filter:null};
+    $scope.libraryEntries = []; $scope.libraryGroups = [];
+    function refreshLibrary() {
+        $scope.libraryEntries = QuranLibraryStore.read();
+        $scope.libraryGroups = Array.from(new Set($scope.libraryEntries.map(function (entry) { return entry.group; }))).sort(function (a,b) { return a.localeCompare(b); });
+        if ($scope.libraryForm.filter && !$scope.libraryGroups.includes($scope.libraryForm.filter)) $scope.libraryForm.filter = null;
+    }
+    function libraryAction(action) {
+        try { $scope.libraryStatus = action(); refreshLibrary(); }
+        catch (error) { $scope.libraryStatus = error.message; }
+    }
+    libraryAction(function () { return ''; });
+    $scope.libraryMatchesGroup = function (entry) { return !$scope.libraryForm.filter || entry.group === $scope.libraryForm.filter; };
+    $scope.saveToLibrary = function () {
+        if (!$scope.isSearchDone || $scope.queryEdited) { $scope.libraryStatus = 'نفّذ البحث أولاً لحفظ إعداداته ونتائجه الحالية.'; return; }
+        libraryAction(function () {
+            QuranLibraryStore.save({name:$scope.libraryForm.name, group:$scope.libraryForm.group || 'عام', q:QuranSearchLink.encode(currentSearchParameters())});
+            $scope.libraryForm.filter = null;
+            return 'تم حفظ البحث في هذا المتصفح.';
+        });
+    };
+    $scope.openLibrarySearch = function (entry) {
+        libraryAction(function () {
+            var safe = QuranLibraryData.entry(entry);
+            $location.search({q:safe.q}).hash('');
+            $route.reload(); // Also restore when reopening an unchanged URL after editing its blocks.
+            return 'تم فتح البحث المحفوظ.';
+        });
+    };
+    $scope.editLibrarySearch = function (entry) {
+        $scope.libraryEdit = {id:entry.id, name:entry.name, group:entry.group};
+    };
+    $scope.cancelLibraryEdit = function () { $scope.libraryEdit = null; };
+    $scope.applyLibraryEdit = function () {
+        libraryAction(function () {
+            var edit = $scope.libraryEdit;
+            QuranLibraryStore.edit(edit.id, edit.name, edit.group || 'عام');
+            $scope.libraryEdit = null;
+            return 'تم تعديل الاسم والمجموعة.';
+        });
+    };
+    $scope.removeLibrarySearch = function (entry) {
+        libraryAction(function () { $scope.removedLibrarySearch = QuranLibraryStore.remove(entry.id); return 'تم حذف البحث. يمكنك التراجع الآن.'; });
+    };
+    $scope.undoLibraryRemove = function () {
+        libraryAction(function () { QuranLibraryStore.restore($scope.removedLibrarySearch); $scope.removedLibrarySearch = null; return 'تمت استعادة البحث.'; });
+    };
+    $scope.exportLibrary = function () {
+        libraryAction(function () {
+            download(QuranLibraryData.export(QuranLibraryStore.read()), 'application/json;charset=utf-8', 'quran-search-library.json');
+            return 'تم تصدير المكتبة.';
+        });
+    };
+    $scope.importLibraryFile = function (file) {
+        if (!file || file.size > 1024 * 1024) { $scope.libraryStatus = 'اختر ملف JSON لا يتجاوز 1 ميغابايت.'; return; }
+        $scope.importingLibrary = true;
+        var reader = new $window.FileReader();
+        reader.onload = function () { $scope.$evalAsync(function () {
+            libraryAction(function () { var added = QuranLibraryStore.import(reader.result); return 'تم استيراد ' + added + ' من الأبحاث الجديدة؛ تُتجاوز النسخ المتطابقة.'; });
+            $scope.importingLibrary = false;
+        }); };
+        reader.onerror = function () { $scope.$evalAsync(function () { $scope.libraryStatus = 'تعذرت قراءة الملف. لم تتغير المكتبة.'; $scope.importingLibrary = false; }); };
+        reader.readAsText(file);
+    };
+    function onLibraryStorage(event) {
+        if (event.key === QuranLibraryStore.key || event.key === null) $scope.$evalAsync(function () { libraryAction(function () { return 'تم تحديث المكتبة من نافذة أخرى.'; }); });
+    }
+    $window.addEventListener('storage', onLibraryStorage);
+    $scope.$on('$destroy', function () { $window.removeEventListener('storage', onLibraryStorage); });
+
+    var ayatByReference = new Map(all_ayat.map(function (ayah) { return [ayah.sura_id + ':' + ayah.verse_id, ayah]; }));
+    $scope.contextAyah = function (group, direction) {
+        var edge = direction === 'before' ? group.ayat[0] : group.ayat[group.ayat.length - 1];
+        return ayatByReference.get(edge.sura_id + ':' + (edge.verse_id + (direction === 'before' ? -1 : 1)));
+    };
+    $scope.toggleResultContext = function (group, direction) {
+        if (!$scope.contextAyah(group, direction)) return;
+        var key = direction === 'before' ? 'showPrevious' : 'showNext';
+        group[key] = !group[key];
+    };
     allow_pagination($scope);
     //init filters
     let urlQueryParameters = searchParameters();
@@ -1160,11 +1253,7 @@ myApp.controller('AyatSearchController', function ($scope, $window, $http, $rout
 
     $scope.exportResults = function (kind) {
         var rows = kind === 'ayat' ? QuranResults.ayahRows($scope.filteredAyat, all_suwar, publicBaseUrl()) : QuranResults.frequencyRows($scope.filteredAyat, all_suwar, publicBaseUrl());
-        var blob = new $window.Blob([QuranResults.csv(rows)], {type: 'text/csv;charset=utf-8'});
-        var url = $window.URL.createObjectURL(blob), link = document.createElement('a');
-        link.href = url; link.download = kind === 'ayat' ? 'quran-ayat.csv' : 'quran-frequencies.csv';
-        document.body.appendChild(link); link.click(); link.remove();
-        $timeout(function () { $window.URL.revokeObjectURL(url); }, 1000, false);
+        download(QuranResults.csv(rows), 'text/csv;charset=utf-8', kind === 'ayat' ? 'quran-ayat.csv' : 'quran-frequencies.csv');
     };
 
     $scope.searchButtonClicked = function () {
@@ -1215,10 +1304,7 @@ myApp.controller('AyatSearchController', function ($scope, $window, $http, $rout
     };
 
     $scope.copySearchLink = function () {
-        var params = Object.assign({}, searchParameters(), {
-            filter_results: getTrueKeys($scope.useResults).join(','),
-            filter_suwar: getTrueKeys($scope.useSuwar).join(',')
-        });
+        var params = currentSearchParameters();
         $scope.shareUrl = publicBaseUrl() + '#!/search?q=' + QuranSearchLink.encode(params);
         $scope.copyLinkStatus = '';
         function fallback() {
