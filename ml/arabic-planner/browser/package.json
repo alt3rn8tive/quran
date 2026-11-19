@@ -1,0 +1,7 @@
+{
+  "name": "quran-arabic-planner-browser",
+  "private": true,
+  "scripts": {"build": "node build.cjs"},
+  "dependencies": {"@huggingface/transformers": "3.8.1"},
+  "devDependencies": {"esbuild": "0.25.12"}
+}

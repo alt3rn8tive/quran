@@ -1,0 +1,9 @@
+{
+  "reviewer": "",
+  "artifact_fingerprint": "COPY_FROM_MANIFEST",
+  "independent_gold_review": false,
+  "devices": [
+    {"platform":"android","device":"","browser":"","physical_device":true,"artifact_fingerprint":"","parity_pass":false,"warm_p95_ms":null,"cold_load_ms":null,"responsive_ui":false,"no_remote_requests":false},
+    {"platform":"ios","device":"","browser":"","physical_device":true,"artifact_fingerprint":"","parity_pass":false,"warm_p95_ms":null,"cold_load_ms":null,"responsive_ui":false,"no_remote_requests":false}
+  ]
+}

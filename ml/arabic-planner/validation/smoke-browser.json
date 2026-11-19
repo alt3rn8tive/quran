@@ -1,0 +1,19 @@
+{
+  "samples": 115,
+  "tokenizer_exact": true,
+  "decision_exact": true,
+  "compiler_exact": true,
+  "compiler_cases": 111,
+  "max_probability_difference": 7.450580596923828e-9,
+  "cold_load_ms": 1651.7000000029802,
+  "warm_p95_ms": 37.5,
+  "normal_rejects_unapproved": true,
+  "worker_rejects_unapproved": true,
+  "rejects_corrupt_weights": true,
+  "same_origin_only": true,
+  "artifact_fingerprint": "877489cc5e5d07c56110cd09b46147630bbe4a3eba97032b51b1ba6abbcf307e",
+  "smoke_only": true,
+  "device": "Chromium headless, 390px viewport; desktop CPU (not a physical phone)",
+  "physical_mobile_verified": false,
+  "parity_pass": true
+}

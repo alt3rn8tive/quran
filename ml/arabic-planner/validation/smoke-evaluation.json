@@ -1,0 +1,159 @@
+{
+  "samples": 600,
+  "accepted": 0,
+  "coverage": 0.0,
+  "accepted_exact_plan_precision": 0.0,
+  "precision_95_lower": 0.0,
+  "ood_samples": 49,
+  "ood_false_accepts": 0,
+  "ood_fpr_95_upper": 0.07269781922049638,
+  "all_reviewed": false,
+  "smoke_only": true,
+  "per_intent": {
+    "text_contains": {
+      "accepted": 0,
+      "precision": 0.0,
+      "precision_95_lower": 0.0
+    },
+    "text_whole": {
+      "accepted": 0,
+      "precision": 0.0,
+      "precision_95_lower": 0.0
+    },
+    "text_starts": {
+      "accepted": 0,
+      "precision": 0.0,
+      "precision_95_lower": 0.0
+    },
+    "text_ends": {
+      "accepted": 0,
+      "precision": 0.0,
+      "precision_95_lower": 0.0
+    },
+    "text_phrase": {
+      "accepted": 0,
+      "precision": 0.0,
+      "precision_95_lower": 0.0
+    },
+    "context_before": {
+      "accepted": 0,
+      "precision": 0.0,
+      "precision_95_lower": 0.0
+    },
+    "context_after": {
+      "accepted": 0,
+      "precision": 0.0,
+      "precision_95_lower": 0.0
+    },
+    "between_adjacent": {
+      "accepted": 0,
+      "precision": 0.0,
+      "precision_95_lower": 0.0
+    },
+    "between_exact": {
+      "accepted": 0,
+      "precision": 0.0,
+      "precision_95_lower": 0.0
+    },
+    "between_range": {
+      "accepted": 0,
+      "precision": 0.0,
+      "precision_95_lower": 0.0
+    },
+    "between_either": {
+      "accepted": 0,
+      "precision": 0.0,
+      "precision_95_lower": 0.0
+    },
+    "cross_ayah": {
+      "accepted": 0,
+      "precision": 0.0,
+      "precision_95_lower": 0.0
+    },
+    "alternatives": {
+      "accepted": 0,
+      "precision": 0.0,
+      "precision_95_lower": 0.0
+    },
+    "exclude_verse": {
+      "accepted": 0,
+      "precision": 0.0,
+      "precision_95_lower": 0.0
+    },
+    "exclude_word": {
+      "accepted": 0,
+      "precision": 0.0,
+      "precision_95_lower": 0.0
+    },
+    "letters_exact": {
+      "accepted": 0,
+      "precision": 0.0,
+      "precision_95_lower": 0.0
+    },
+    "letters_range": {
+      "accepted": 0,
+      "precision": 0.0,
+      "precision_95_lower": 0.0
+    },
+    "letter_mark": {
+      "accepted": 0,
+      "precision": 0.0,
+      "precision_95_lower": 0.0
+    },
+    "any_letter_mark": {
+      "accepted": 0,
+      "precision": 0.0,
+      "precision_95_lower": 0.0
+    },
+    "letter_shadda": {
+      "accepted": 0,
+      "precision": 0.0,
+      "precision_95_lower": 0.0
+    },
+    "letter_optional": {
+      "accepted": 0,
+      "precision": 0.0,
+      "precision_95_lower": 0.0
+    },
+    "symbol_only": {
+      "accepted": 0,
+      "precision": 0.0,
+      "precision_95_lower": 0.0
+    },
+    "symbol_before": {
+      "accepted": 0,
+      "precision": 0.0,
+      "precision_95_lower": 0.0
+    },
+    "symbol_after": {
+      "accepted": 0,
+      "precision": 0.0,
+      "precision_95_lower": 0.0
+    },
+    "capture_between": {
+      "accepted": 0,
+      "precision": 0.0,
+      "precision_95_lower": 0.0
+    },
+    "unknown_word": {
+      "accepted": 0,
+      "precision": 0.0,
+      "precision_95_lower": 0.0
+    },
+    "unknown_words": {
+      "accepted": 0,
+      "precision": 0.0,
+      "precision_95_lower": 0.0
+    },
+    "reference": {
+      "accepted": 0,
+      "precision": 0.0,
+      "precision_95_lower": 0.0
+    }
+  },
+  "artifact_fingerprint": "877489cc5e5d07c56110cd09b46147630bbe4a3eba97032b51b1ba6abbcf307e",
+  "dataset_sha256": "8eb2b40ef2f28929200a9fcdd61f1d04f8d0dd6d76e5f8c04d446a476c43940b",
+  "approved": false,
+  "in_scope_coverage": 0.0,
+  "statistical_gates_pass": false
+}

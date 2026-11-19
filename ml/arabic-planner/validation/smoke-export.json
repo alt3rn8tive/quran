@@ -1,0 +1,18 @@
+{
+  "smoke_only": true,
+  "approved": false,
+  "artifact_fingerprint": "877489cc5e5d07c56110cd09b46147630bbe4a3eba97032b51b1ba6abbcf307e",
+  "artifact_bytes": 2231307,
+  "quantization": {
+    "max_logit_difference": 0.00041561946272850037,
+    "argmax_agreements": 3,
+    "sample_count": 3
+  },
+  "tokenizer": "CAMeL-Lab/bert-base-arabic-camelbert-mix",
+  "tokenizer_revision": "9be352797bdf28a9ae21e2ae582aaaca7abdb22d",
+  "initialization": "random tiny BERT, not pretrained language weights",
+  "parameter_count": 983325,
+  "training_steps": 2,
+  "train_examples": 32,
+  "validation_examples": 16
+}

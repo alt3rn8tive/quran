@@ -1,0 +1,16 @@
+{
+  "generator_seed": 42019,
+  "human_reviewed": false,
+  "files": {
+    "train": "73580bc6c779990fdb1bb17de0d2e49ca9adba62e70bdbf3c7eda5d54bf04407",
+    "validation": "93f2f3b637b2dec5f6a73980590f420c3a32c8887ea3356f8dd9a9e5ef6fc82a",
+    "calibration": "adf1a9c1460b9c564aedea00f068b88b783e610cc9da27356652131c3d140ceb",
+    "test": "8eb2b40ef2f28929200a9fcdd61f1d04f8d0dd6d76e5f8c04d446a476c43940b"
+  },
+  "counts": {
+    "train": 2291,
+    "validation": 598,
+    "calibration": 607,
+    "test": 600
+  }
+}

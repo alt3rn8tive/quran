@@ -1,2 +1,9 @@
 .idea
 node_modules
+ml/arabic-planner/browser/vendor/
+ml/arabic-planner/browser/node_modules/
+ml/arabic-planner/artifacts/
+ml/arabic-planner/**/__pycache__/
+ml/arabic-planner/**/*.onnx
+ml/arabic-planner/**/*.safetensors
+ml/arabic-planner/**/*.bin
