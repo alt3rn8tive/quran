@@ -44,11 +44,12 @@ var QuranSurahStats = {
 
 myApp.controller('SurahStatisticsController', function ($scope, $location, $window, $timeout) {
     $scope.suwar = all_suwar;
-    $scope.viewState = {id:1, marks:'ignore', tab:'words', word:null, ayah:null};
+    $scope.viewState = {id:1, marks:'ignore', tab:'words', word:null, ayah:null, metric:'words', start:1, end:null, letter:null};
+    $scope.diagramOptions = {wordLimit:10, start:1, end:1};
     $scope.wordOptions = {filter:'', once:false, sort:'frequency', limit:20, occurrenceLimit:10};
     function baseUrl() { var url = new URL($location.absUrl()); url.hash=''; url.searchParams.delete('release'); return url.href; }
     function pageState() {
-        return Object.assign({}, $scope.viewState, {filter:$scope.wordOptions.filter || undefined, once:$scope.wordOptions.once ? true : undefined, sort:$scope.wordOptions.sort === 'alphabetical' ? 'alphabetical' : undefined});
+        return Object.assign({}, $scope.viewState, {bars:Number($scope.diagramOptions.wordLimit)===20 ? 20:undefined, filter:$scope.wordOptions.filter || undefined, once:$scope.wordOptions.once ? true : undefined, sort:$scope.wordOptions.sort === 'alphabetical' ? 'alphabetical' : undefined});
     }
     function saveState() {
         $location.search({state:QuranSearchLink.encode(pageState())});
@@ -68,13 +69,18 @@ myApp.controller('SurahStatisticsController', function ($scope, $location, $wind
             $scope.stats = QuranSurahStats.calculate(all_ayat, id, marks);
             $scope.wordOptions.filter=''; $scope.wordOptions.once=false; $scope.wordOptions.limit=20;
         }
-        $scope.viewState = {id:id, marks:marks, tab:['words','letters','lengths'].includes(state.tab) ? state.tab : 'words', word:typeof state.word === 'string' ? state.word : null, ayah:Number(state.ayah) || null};
+        $scope.viewState = {id:id, marks:marks, tab:['words','letters','lengths'].includes(state.tab) ? state.tab : 'words', word:typeof state.word === 'string' ? state.word : null, ayah:Number(state.ayah) || null, metric:state.metric === 'letters' ? 'letters':'words', start:state.start, end:state.end, letter:typeof state.letter === 'string' ? state.letter:null};
         $scope.wordOptions.filter=typeof state.filter === 'string' ? state.filter.slice(0,100) : '';
         $scope.wordOptions.once=state.once === true;
         $scope.wordOptions.sort=state.sort === 'alphabetical' ? 'alphabetical' : 'frequency';
         $scope.selectedSurah = all_suwar[id-1];
         $scope.selectedStatsAyah = $scope.stats.verses.find(function (verse) { return verse.verse_id === $scope.viewState.ayah; }) || $scope.stats.verses[0];
+        var range=QuranStatisticsCharts.range($scope.stats.verses,state.start,state.end);
+        $scope.viewState.start=range[0]; $scope.viewState.end=range[1];
+        if ($scope.selectedStatsAyah.verse_id<range[0] || $scope.selectedStatsAyah.verse_id>range[1]) $scope.selectedStatsAyah=$scope.stats.verses.find(function (verse) { return verse.verse_id===range[0]; });
         $scope.viewState.ayah = $scope.selectedStatsAyah.verse_id;
+        $scope.diagramOptions.wordLimit=state.bars===20 ? 20:10;
+        updateRangeSummary(); updateLetterSelection();
         selectWord();
     }
     function scrollSelectedVerse() {
@@ -87,26 +93,57 @@ myApp.controller('SurahStatisticsController', function ($scope, $location, $wind
     function readLocation() {
         var raw = $location.search();
         var state = typeof raw.state === 'string' ? QuranSearchLink.parameters({q:raw.state}) : raw;
+        var previous=Object.assign({},$scope.viewState);
         applyState(state);
         $scope.statisticsLink=''; $scope.copyStatisticsStatus='';
-        scrollSelectedVerse();
+        if (previous.tab !== $scope.viewState.tab || (previous.ayah !== $scope.viewState.ayah && previous.start === $scope.viewState.start && previous.end === $scope.viewState.end)) scrollSelectedVerse();
     }
     readLocation();
     $scope.$on('$routeUpdate', function () { readLocation(); });
     $scope.changeStatistics = function () {
         // Changing the selector updates viewState before this handler runs.
         $scope.stats = null;
-        applyState(Object.assign({}, $scope.viewState, {word:null,ayah:null})); saveState();
+        applyState(Object.assign({}, $scope.viewState, {word:null,ayah:null,start:null,end:null,letter:null})); saveState();
     };
     $scope.updateStatisticsFilters = function () { saveState(); $location.replace(); };
     $scope.switchStatsTab = function (tab) { $scope.viewState.tab=tab; saveState(); };
     $scope.chooseStatsWord = function (word) { $scope.viewState.word=word ? word.key : null; selectWord(); saveState(); };
-    $scope.chooseStatsAyah = function (verse) { $scope.selectedStatsAyah=verse; $scope.viewState.ayah=verse.verse_id; $scope.viewState.tab='lengths'; saveState(); };
+    $scope.chooseStatsAyah = function (verse) {
+        $scope.selectedStatsAyah=verse; $scope.viewState.ayah=verse.verse_id; $scope.viewState.tab='lengths';
+        if (verse.verse_id<$scope.viewState.start || verse.verse_id>$scope.viewState.end) {
+            $scope.viewState.start=$scope.stats.verses[0].verse_id; $scope.viewState.end=$scope.stats.verses[$scope.stats.verses.length-1].verse_id; updateRangeSummary();
+        }
+        saveState(); scrollSelectedVerse();
+    };
+    function updateRangeSummary() {
+        $scope.diagramOptions.start=$scope.viewState.start; $scope.diagramOptions.end=$scope.viewState.end;
+        $scope.rangeVerses=$scope.stats.verses.filter(function (verse) { return verse.verse_id>=$scope.viewState.start && verse.verse_id<=$scope.viewState.end; });
+        $scope.rangeSummary={ayat:$scope.rangeVerses.length, words:$scope.rangeVerses.reduce(function (sum,verse) { return sum+verse.wordCount; },0), letters:$scope.rangeVerses.reduce(function (sum,verse) { return sum+verse.letterCount; },0)};
+    }
+    $scope.setDiagramRange = function (start,end) {
+        var range=QuranStatisticsCharts.range($scope.stats.verses,start,end);
+        $scope.viewState.start=range[0]; $scope.viewState.end=range[1];
+        if ($scope.selectedStatsAyah.verse_id<range[0] || $scope.selectedStatsAyah.verse_id>range[1]) { $scope.selectedStatsAyah=$scope.stats.verses.find(function (verse) { return verse.verse_id===range[0]; }); $scope.viewState.ayah=range[0]; }
+        updateRangeSummary(); saveState();
+    };
+    $scope.applyDiagramRange = function () { $scope.setDiagramRange($scope.diagramOptions.start,$scope.diagramOptions.end); };
+    $scope.resetDiagramRange = function () { $scope.setDiagramRange(null,null); };
+    $scope.changeWordDiagramLimit = function () { saveState(); $location.replace(); };
+    $scope.changeDiagramMetric = function () { saveState(); };
+    function updateLetterSelection() {
+        var key=$scope.viewState.letter;
+        $scope.selectedLetterRows=key==='other' ? $scope.stats.letters.slice(8) : $scope.stats.letters.filter(function (row) { return row.letter===key; });
+        if (!$scope.selectedLetterRows.length) $scope.viewState.letter=null;
+        var count=$scope.selectedLetterRows.reduce(function (sum,row) { return sum+row.count; },0);
+        $scope.selectedLetterSummary={label:key==='other' ? 'بقية الحروف':key, count:count, percentage:$scope.stats.totalLetters ? 100*count/$scope.stats.totalLetters : 0};
+    }
+    $scope.chooseStatsLetter = function (letter) { $scope.viewState.letter=letter; updateLetterSelection(); saveState(); };
     $scope.filteredStatsWords = function () {
         var needle = QuranSurahStats.key($scope.wordOptions.filter.trim(), $scope.viewState.marks);
         var words = $scope.stats.words.filter(function (word) { return (!$scope.wordOptions.once || word.count === 1) && (!needle || word.key.includes(needle)); });
         return $scope.wordOptions.sort === 'alphabetical' ? words.slice().sort(function (a,b) { return a.key.localeCompare(b.key); }) : words;
     };
+    $scope.$watchGroup(['stats','wordOptions.filter','wordOptions.once','wordOptions.sort','diagramOptions.wordLimit'], function () { $scope.wordDiagramRows=$scope.filteredStatsWords().slice(0,Number($scope.diagramOptions.wordLimit)); });
     $scope.$watchGroup(['wordOptions.filter','wordOptions.once','wordOptions.sort'], function () { $scope.wordOptions.limit=20; });
     $scope.copyStatisticsLink = function () {
         $scope.statisticsLink = baseUrl() + '#!/statistics?state=' + QuranSearchLink.encode(pageState());
@@ -124,7 +161,7 @@ myApp.controller('SurahStatisticsController', function ($scope, $location, $wind
         var header = ['السورة','رقم السورة','تجميع الكلمات'];
         if (kind === 'words') return [header.concat(['الكلمة','عدد التكرارات','أرقام الآيات'])].concat($scope.filteredStatsWords().map(function (word) { return prefix.concat([word.key,word.count,word.verseIds.join('، ')]); }));
         if (kind === 'letters') return [header.concat(['الحرف','عدد التكرارات','النسبة المئوية'])].concat($scope.stats.letters.map(function (letter) { return prefix.concat([letter.letter,letter.count,letter.percentage.toFixed(2)]); }));
-        if (kind === 'lengths') return [header.concat(['رقم الآية','عدد الكلمات','عدد الحروف','نص الآية','الرابط'])].concat($scope.stats.verses.map(function (verse) { return prefix.concat([verse.verse_id,verse.wordCount,verse.letterCount,verse.text.trim(),baseUrl()+'#!/surah?id='+verse.sura_id+'#ayah-'+verse.verse_id]); }));
+        if (kind === 'lengths' || kind === 'range') return [header.concat(['رقم الآية','عدد الكلمات','عدد الحروف','نص الآية','الرابط'])].concat((kind === 'range' ? $scope.rangeVerses : $scope.stats.verses).map(function (verse) { return prefix.concat([verse.verse_id,verse.wordCount,verse.letterCount,verse.text.trim(),baseUrl()+'#!/surah?id='+verse.sura_id+'#ayah-'+verse.verse_id]); }));
         return [header.concat(['الإحصاء','القيمة'])].concat([
             ['عدد الآيات',$scope.stats.ayahCount],['عدد الكلمات',$scope.stats.totalWords],['عدد الحروف',$scope.stats.totalLetters],
             ['الكلمات المختلفة',$scope.stats.distinctWords],['الكلمات الواردة مرة واحدة',$scope.stats.singletons],['متوسط كلمات الآية',$scope.stats.averageWords.toFixed(2)],

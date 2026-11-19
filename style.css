@@ -1102,3 +1102,53 @@ input[type=checkbox] { accent-color: var(--accent); width: 18px; height: 18px; }
 .stats-heading { background: transparent; border: 0; }
 .stats-heading > div { min-width: 0; flex: 1 1 260px; }
 .surah-stats h2 { color: var(--ink); }
+
+/* Bundled D3 charts: touch, keyboard and pointer interactions share the same state. */
+.stats-diagram-block { margin-block: 1.2rem; padding: 1rem; border: 1px solid #dce7df; border-radius: 12px; background: #fafbf8; }
+.stats-diagram-block .stats-section-heading label { display: grid; gap: .3rem; }
+.quran-d3-surface { position: relative; width: 100%; min-width: 0; }
+.quran-d3-surface > svg { display: block; width: 100%; height: auto; overflow: visible; touch-action: pan-y; }
+.quran-d3-surface svg text { font-family: 'Noto Sans Arabic', sans-serif; fill: #173c39; }
+.quran-d3-surface .domain, .quran-d3-surface .tick line { stroke: #c2d3c9; }
+.quran-d3-surface .tick text { font-size: 11px; }
+.quran-d3-surface [role=button] { cursor: pointer; }
+.quran-d3-surface [role=button]:focus { outline: 2px solid #9a6b20; outline-offset: 2px; }
+.word-chart-bar { fill: #4e927c; }
+.word-chart-row:hover .word-chart-bar, .word-chart-row:focus .word-chart-bar { fill: #176b5b; }
+.word-chart-row.is-selected .word-chart-bar { fill: #a77525; }
+.word-chart-label { font-size: 15px; }
+.word-chart-count { font-size: 12px; }
+.stats-chart-tooltip { position: absolute; z-index: 5; max-width: 190px; pointer-events: none; padding: .5rem .7rem; border-radius: 8px; color: white; background: #173c39; box-shadow: 0 3px 12px #173c3925; font-size: .8rem; direction: rtl; }
+[quran-letter-chart] { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); align-items: center; gap: 1rem; }
+[quran-letter-chart] > svg { max-width: 420px; margin: auto; }
+.letter-slice { stroke: white; stroke-width: 2px; }
+.letter-slice:hover, .letter-slice.is-selected, .letter-slice:focus { stroke: #173c39; stroke-width: 4px; }
+.donut-number { font-size: 29px; font-weight: bold; }
+.donut-caption { font-size: 14px; }
+.stats-donut-legend { display: grid; gap: .35rem; }
+.stats-donut-legend button { display: flex; align-items: center; gap: .5rem; text-align: right; background: white; font-size: .85rem; }
+.stats-donut-legend button[aria-pressed=true] { border: 2px solid #176b5b; background: #edf5f0; }
+.donut-swatch { flex: 0 0 12px; width: 12px; height: 12px; border-radius: 3px; }
+.stats-letter-detail { padding: .8rem; background: #fff6db; margin-top: 1rem; border-radius: 8px; }
+.stats-letter-grid button { background: transparent; border: 0; padding: 0; }
+.stats-letter-grid li.selected { border: 2px solid #a77525; background: #fff7e3; }
+.stats-diagram-controls, .stats-diagram-range { display: flex; flex-wrap: wrap; gap: .75rem; align-items: end; margin-block: 1rem; }
+.stats-diagram-controls label { flex: 1 1 180px; display: grid; gap: .35rem; min-width: 0; }
+.stats-diagram-range label { flex: 1 1 100px; display: grid; gap: .35rem; min-width: 0; }
+.stats-diagram-range input { width: 100%; min-width: 0; min-height: 44px; box-sizing: border-box; padding: .6rem; border: 1px solid #a6c0b3; border-radius: 8px; font: inherit; }
+.verse-area { fill: #deece5; }
+.verse-line { stroke: #176b5b; stroke-width: 1.7px; fill: none; }
+.point-visible { fill: #176b5b; stroke: white; stroke-width: 1px; }
+.verse-chart-point.is-selected .point-visible { fill: #a77525; stroke: #5a3b12; stroke-width: 1.5px; }
+.verse-y-axis .domain { display: none; }
+.verse-y-axis .tick line { stroke-dasharray: 3 4; opacity: .65; }
+.overview-area { fill: #83b49e; }
+.verse-brush .selection { fill: #bf8d35; fill-opacity: .3; stroke: #8a601d; }
+.verse-brush .handle { fill: #8a601d; }
+.focus-axis-label, .overview-caption, .chart-x-label { font-size: 12px; }
+@media (max-width:600px) {
+    .stats-diagram-block { padding: .65rem; }
+    [quran-letter-chart] { grid-template-columns: minmax(0,1fr); }
+    .stats-diagram-range button { flex: 1 1 100%; }
+}
+.verse-brush { touch-action: none; }

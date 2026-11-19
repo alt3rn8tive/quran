@@ -44,6 +44,10 @@
             <label>الترتيب <select ng-model="wordOptions.sort" ng-change="updateStatisticsFilters()"><option value="frequency">الأكثر تكراراً</option><option value="alphabetical">أبجدياً</option></select></label>
             <label class="stats-once"><input type="checkbox" ng-model="wordOptions.once" ng-change="updateStatisticsFilters()"> الكلمات الواردة مرة واحدة فقط</label>
         </div>
+        <div class="stats-diagram-block">
+            <div class="stats-section-heading"><div><h3>مقارنة تكرار الكلمات</h3><p class="field-hint">طول الشريط يمثل عدد التكرارات. اضغط عليه أو استخدم لوحة المفاتيح لعرض مواضع الكلمة. الرسم يتبع تصفية القائمة وترتيبها.</p></div><label>عدد الكلمات في الرسم <select ng-model="diagramOptions.wordLimit" ng-change="changeWordDiagramLimit()" ng-options="n as n for n in [10,20]"></select></label></div>
+            <div quran-word-chart rows="wordDiagramRows" selected="viewState.word" on-select="chooseStatsWord(word)"></div>
+        </div>
         <section class="stats-occurrences" ng-if="activeWord" aria-labelledby="stats-occurrences-title">
             <div class="stats-section-heading"><div><h3 id="stats-occurrences-title">مواضع «{{activeWord.key}}»</h3><span>{{activeWord.count}} تكراراً في {{wordOccurrences.length}} آية</span></div><button type="button" ng-click="chooseStatsWord(null)">إغلاق مواضع الكلمة</button></div>
             <article ng-repeat="verse in wordOccurrences | limitTo:wordOptions.occurrenceLimit"><p ng-bind-html="verse.html"></p><a ng-href="#!/surah?id={{verse.sura_id}}#ayah-{{verse.verse_id}}">سورة {{selectedSurah.title}} - الآية {{verse.verse_id}}</a><small> · {{verse.count}} تكراراً</small></article>
@@ -58,14 +62,30 @@
     </section>
     <section id="stats-letters" class="stats-panel" ng-if="viewState.tab === 'letters'" aria-labelledby="stats-letters-title">
         <div class="stats-section-heading"><div><h2 id="stats-letters-title">تكرار الحروف المكتوبة</h2><p class="field-hint">مرتبة من الأكثر تكراراً. النسبة من مجموع حروف السورة؛ كل صورة من صور الحرف تظهر كما كُتبت.</p></div><button type="button" ng-click="exportStatistics('letters')">تصدير الحروف CSV</button></div>
-        <ul class="stats-letter-grid"><li ng-repeat="letter in stats.letters"><strong>{{letter.letter}}</strong><span>{{letter.count}} مرة</span><small>{{letter.percentage | number:1}}٪ من الحروف</small><div class="stats-frequency-track" aria-hidden="true"><span ng-style="{width:(100 * letter.count / stats.letters[0].count) + '%'}"></span></div></li></ul>
+        <div class="stats-diagram-block">
+            <h3>توزيع الحروف</h3><p class="field-hint">أكثر ثمانية حروف تكراراً، ثم بقية الحروف مجتمعة. اضغط على قطاع أو اسمه لعرض العدد والنسبة. يمكنك اختيار أي حرف من القائمة الكاملة أسفل الرسم.</p>
+            <div quran-letter-chart rows="stats.letters" selected="viewState.letter" on-select="chooseStatsLetter(letter)"></div>
+            <div class="stats-letter-detail" ng-if="viewState.letter" role="status"><strong>{{selectedLetterSummary.label}}</strong> · {{selectedLetterSummary.count}} حرفاً · {{selectedLetterSummary.percentage | number:1}}٪ من حروف السورة
+                <p ng-if="viewState.letter === 'other'">تضم: <span ng-repeat="row in selectedLetterRows">{{row.letter}}{{$last ? '' : '، '}}</span></p>
+                <button type="button" ng-click="chooseStatsLetter(null)">إلغاء تحديد الحرف</button>
+            </div>
+        </div>
+        <ul class="stats-letter-grid"><li ng-repeat="letter in stats.letters" ng-class="{selected:viewState.letter === letter.letter}"><button type="button" ng-click="chooseStatsLetter(letter.letter)" aria-label="تحديد الحرف {{letter.letter}}" aria-pressed="{{viewState.letter === letter.letter}}"><strong>{{letter.letter}}</strong></button><span>{{letter.count}} مرة</span><small>{{letter.percentage | number:1}}٪ من الحروف</small><div class="stats-frequency-track" aria-hidden="true"><span ng-style="{width:(100 * letter.count / stats.letters[0].count) + '%'}"></span></div></li></ul>
     </section>
     <section id="stats-lengths" class="stats-panel" ng-if="viewState.tab === 'lengths'" aria-labelledby="stats-lengths-title">
-        <div class="stats-section-heading"><div><h2 id="stats-lengths-title">أطوال الآيات بعدد الكلمات</h2><p class="field-hint">كل عمود يمثل آية. اضغط عليه لقراءة نصها وعدد كلماتها وحروفها. مرّر الرسم أفقياً للسور الطويلة.</p></div><button type="button" ng-click="exportStatistics('lengths')">تصدير أطوال الآيات CSV</button></div>
-        <p class="stats-chart-label">عدد الكلمات · أعلى قيمة {{stats.maxWords}} · المحور الأفقي: رقم الآية</p>
-        <div class="stats-chart-scroll" tabindex="0" role="region" aria-label="رسم عدد كلمات كل آية">
-            <div class="stats-verse-chart"><button type="button" ng-repeat="verse in stats.verses" id="stats-bar-{{verse.verse_id}}" class="stats-verse-bar" aria-pressed="{{selectedStatsAyah.verse_id === verse.verse_id}}" ng-class="{active:selectedStatsAyah.verse_id === verse.verse_id}" ng-click="chooseStatsAyah(verse)" aria-label="الآية {{verse.verse_id}}: {{verse.wordCount}} كلمة" title="الآية {{verse.verse_id}}: {{verse.wordCount}} كلمة"><span class="stats-bar-space"><span class="stats-bar-fill" ng-style="{height:(100 * verse.wordCount / stats.maxWords) + '%'}"></span></span><small>{{verse.verse_id}}</small></button></div>
+        <div class="stats-section-heading"><div><h2 id="stats-lengths-title">أطوال الآيات بعدد الكلمات</h2><p class="field-hint">كل نقطة تمثل آية. اضغط عليها لقراءة نصها. اسحب في الرسم السفلي لتكبير نطاق من الآيات، أو حدده بالأرقام. يمكن تبديل القياس بين الكلمات والحروف.</p></div><button type="button" ng-click="exportStatistics('lengths')">تصدير كل أطوال الآيات CSV</button></div>
+        <div class="stats-diagram-controls">
+            <label>القياس <select ng-model="viewState.metric" ng-change="changeDiagramMetric()"><option value="words">عدد الكلمات</option><option value="letters">عدد الحروف</option></select></label>
+            <label>اختيار آية <select ng-model="viewState.ayah" ng-options="verse.verse_id as ('الآية ' + verse.verse_id) for verse in stats.verses" ng-change="chooseStatsAyah(stats.verses[viewState.ayah - 1])"></select></label>
         </div>
+        <form class="stats-diagram-range" ng-submit="applyDiagramRange()">
+            <label>من الآية <input type="number" min="1" max="{{stats.ayahCount}}" ng-model="diagramOptions.start" required></label>
+            <label>إلى الآية <input type="number" min="1" max="{{stats.ayahCount}}" ng-model="diagramOptions.end" required></label>
+            <button type="submit">تطبيق النطاق</button><button type="button" ng-click="resetDiagramRange()">عرض السورة كاملة</button>
+        </form>
+        <p class="stats-chart-label" role="status">النطاق {{viewState.start}}–{{viewState.end}}: {{rangeSummary.ayat}} آية · {{rangeSummary.words}} كلمة · {{rangeSummary.letters}} حرفاً. ملخص السورة في الأعلى يبقى للسورة كاملة.</p>
+        <div quran-verse-chart verses="stats.verses" metric="viewState.metric" start="viewState.start" end="viewState.end" selected="viewState.ayah" on-select="chooseStatsAyah(verse)" on-range="setDiagramRange(start,end)"></div>
+        <button type="button" ng-click="exportStatistics('range')">تصدير النطاق CSV</button>
         <article class="stats-selected-verse" aria-live="polite"><h3>الآية {{selectedStatsAyah.verse_id}}</h3><p>{{selectedStatsAyah.text}}</p><span>{{selectedStatsAyah.wordCount}} كلمة · {{selectedStatsAyah.letterCount}} حرفاً</span><a ng-href="#!/surah?id={{viewState.id}}#ayah-{{selectedStatsAyah.verse_id}}">قراءة الآية في السورة ←</a></article>
     </section>
 </main>
