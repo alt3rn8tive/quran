@@ -1,0 +1,10 @@
+{
+  "backbone": "CAMeL-Lab/bert-base-arabic-camelbert-mix",
+  "revision": "9be352797bdf28a9ae21e2ae582aaaca7abdb22d",
+  "license": "apache-2.0",
+  "retained_encoder_layers": [0, 2, 4, 7, 9, 11],
+  "max_tokens": 128,
+  "max_characters": 640,
+  "browser_budget_bytes": 83886080,
+  "note": "Layer-pruned initialization, followed by supervised fine-tuning. This is a candidate, not an evaluated or approved model."
+}

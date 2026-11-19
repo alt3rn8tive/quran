@@ -1,0 +1,17 @@
+{
+  "real_pretrained_candidate": true,
+  "smoke_only": false,
+  "example": "اجمع ٣ كلمات بعد «هدى»",
+  "exact_proposal": true,
+  "manual_draft_preserved": true,
+  "explicit_apply_and_search": true,
+  "saved_link_reload": true,
+  "default_production_gate_intact": true,
+  "cancellation": true,
+  "same_origin_model_requests": true,
+  "cold_load_ms": 6081,
+  "viewport": 390,
+  "physical_mobile_verified": false,
+  "artifact_fingerprint": "9fffb024e37432ca58c5e4d844859007d6c4a6c0e9fad0de98a8c109929321d3",
+  "saved_search_hash": "!/search?q=v1.eyJzIjoi2YfYr9mJICguIC4gLikgIiwicWIiOiJbe1widHlwZVwiOlwiY29udGV4dFwiLFwidmFsdWVcIjpcItmH2K_ZiVwiLFwiY291bnRcIjozfV0iLCJyZW1vdmVfaGFyYWthaCI6ZmFsc2UsInNlYXJjaF9vbmx5X2Zyb21fYmVnaW5uaW5nIjpmYWxzZSwic2VhcmNoX29ubHlfb25fZW5kIjpmYWxzZSwiZXhjbHVkZV9wYXJ0X29mX3dvcmRzIjpmYWxzZX0#main-container"
+}

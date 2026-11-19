@@ -2,7 +2,7 @@ import hashlib, json
 from pathlib import Path
 
 
-def artifact_fingerprint(artifact):
+def artifact_fingerprint(artifact, include_policy=True):
     artifact = Path(artifact)
     names = [
         "onnx/model_quantized.onnx",
@@ -20,6 +20,8 @@ def artifact_fingerprint(artifact):
     ]
     h = hashlib.sha256()
     for name in names:
+        if name == "policy.json" and not include_policy:
+            continue
         h.update(name.encode())
         h.update((artifact / name).read_bytes())
     return h.hexdigest()

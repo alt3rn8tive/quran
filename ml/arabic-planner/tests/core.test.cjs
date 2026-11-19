@@ -59,6 +59,9 @@ test("a confident wrong intent cannot drop explicit exclusions, captures or ayah
         ["اجمع 3 كلمات بين «نور» ثم «هدى»", "between_exact"],
         ["ابحث عن «نور» و «هدى» بأي ترتيب وبينهما 2 كلمات", "between_exact"],
         ["ابحث عن كلمة تبدأ بـ «نور»", "text_contains"],
+        ["ابحث عن «نور» ثم «هدى» متجاورتين", "unknown_word"],
+        ["ابحث عن «ب» ثم 3 حروف مجهولة ثم «ر»", "between_exact"],
+        ["ابحث عن «نور» ثم كلمة واحدة غير محددة ثم «هدى»", "between_adjacent"],
     ]) {
         assert.equal(
             core.decide(text, scores(id), policy, catalog, refs, builder)

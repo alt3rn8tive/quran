@@ -48,6 +48,8 @@
             <p>يعمل هذا الرابط كما هو. لإنشاء بحث مختلف باستخدام الأجزاء، ابدأ بحثاً جديداً.</p>
             <button type="button" ng-click="startNewQuery()">ابدأ بحثاً جديداً</button>
         </div>
+        <quran-search-assistant on-apply="applyAssistantProposal(proposal)"></quran-search-assistant>
+        <p class="assistant-undo" ng-if="assistantUndo">أُضيف اقتراح المساعد إلى المحرر. <button type="button" ng-click="undoAssistantProposal()">التراجع إلى الأجزاء السابقة</button></p>
         <form class="query-builder" ng-submit="searchButtonClicked()" ng-show="!savedQueryOnly" novalidate>
             <div class="builder-heading">
                 <h2 id="builder-title">ماذا تريد أن تجد؟</h2>

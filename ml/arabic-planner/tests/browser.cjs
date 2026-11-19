@@ -42,7 +42,7 @@ async function main() {
                         "Unapproved smoke model loaded in normal mode",
                     );
                 const { createPlanner } = await import("./client.js");
-                if (fixture.smoke_only) {
+                if (normalRejected) {
                     try {
                         const p = await createPlanner(artifact);
                         p.dispose();

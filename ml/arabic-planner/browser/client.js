@@ -1,7 +1,13 @@
 // Optional UI adapter. Call only after the user requests/downloads the Arabic assistant.
 export async function createPlanner(
     base,
-    { loadTimeout = 120000, requestTimeout = 15000 } = {},
+    {
+        loadTimeout = 300000,
+        requestTimeout = 60000,
+        experimental = false,
+        signal,
+        onProgress,
+    } = {},
 ) {
     const worker = new Worker(new URL("./planner-worker.js", import.meta.url), {
         type: "module",
@@ -12,12 +18,23 @@ export async function createPlanner(
     function stop(reason = "Planner closed") {
         if (closed) return;
         closed = true;
+        if (signal) signal.removeEventListener("abort", abort);
         worker.terminate();
         for (const item of pending.values()) {
             clearTimeout(item.timer);
             item.reject(new Error(reason));
         }
         pending.clear();
+    }
+    function abort() {
+        stop("Planner cancelled");
+    }
+    if (signal) {
+        if (signal.aborted) {
+            stop();
+            throw new Error("Planner cancelled");
+        }
+        signal.addEventListener("abort", abort, { once: true });
     }
     function request(type, payload, timeout) {
         if (closed) return Promise.reject(new Error("Planner closed"));
@@ -32,6 +49,10 @@ export async function createPlanner(
         });
     }
     worker.onmessage = ({ data }) => {
+        if (data.event === "progress") {
+            if (onProgress) onProgress(data.progress);
+            return;
+        }
         const item = pending.get(data.id);
         if (!item) return;
         pending.delete(data.id);
@@ -44,7 +65,7 @@ export async function createPlanner(
     try {
         await request(
             "load",
-            { base: new URL(base, location.href).href },
+            { base: new URL(base, location.href).href, experimental },
             loadTimeout,
         );
     } catch (error) {

@@ -1,6 +1,6 @@
 # Arabic → Quran search components
 
-Status: **training and browser tooling, not an approved search assistant**. The live app does not import this code or download a model. No production Arabic accuracy has been measured. See [VALIDATION.md](VALIDATION.md) for the checks actually run.
+Status: **opt-in experimental website integration; not production approved**. The search page offers an Arabic assistant after an explicit download and experimental-use acknowledgement. It previews editable blocks and never executes a search automatically. The approved-model path retains the production gates below. See [VALIDATION.md](VALIDATION.md) for the original tooling smoke checks and [WEBSITE-RELEASE.md](WEBSITE-RELEASE.md) for the website candidate's measured results.
 
 ## Model and architecture
 
@@ -18,7 +18,7 @@ The model chooses an intent only. Shared deterministic JavaScript extracts quote
   → show editable blocks for the user to review and apply
 ```
 
-The browser runs int8 ONNX through Transformers.js/WASM in a Web Worker, with one thread so GitHub Pages does not need cross-origin isolation. All inference assets are self-hosted. Nothing sends requests or Quran queries to an inference service. A user must explicitly request the optional download; keep the existing manual builder immediately available.
+The browser runs int8 ONNX through Transformers.js/WASM in a Web Worker, with one thread so GitHub Pages does not need cross-origin isolation. All inference assets are self-hosted. Nothing sends requests or Quran queries to an inference service. A user must explicitly request the optional download; the existing manual builder stays immediately available.
 
 ## Supported first-version scope
 
@@ -80,7 +80,9 @@ HF_HOME=/workspace/work/arabic-planner-cache \
 
 Replace the data paths with curated split files for a real release. `--data-dir` needs `train.jsonl` and `validation.jsonl`. The training script chooses the best validation checkpoint; calibration fits temperature and per-intent confidence/margin thresholds on calibration only. A class without enough successful calibration examples remains disabled. The test split has no part in training or threshold selection.
 
-Export quantizes both matrix multiplications **and embedding Gather weights**, so a float embedding table does not defeat the download budget. It checks dynamic-input float/int8 parity on three smoke inputs; subsequently assess the quantized model's end-to-end accuracy on the independent test set. Every export starts `approved:false` and with thresholds that reject everything until calibration.
+Export quantizes both matrix multiplications **and embedding Gather weights**, so a float embedding table does not defeat the download budget. It uses unsigned 8-bit weights (U8/U8) to avoid the saturating U8/S8 CPU path and align Python evaluation with browser WASM. Transformers.js loads this as `dtype:'q8'`.
+
+Export probes include one training template per intent and three development inputs, with duplicate masked inputs removed. They require finite scores, identical top-class decisions and a maximum softmax-probability difference of 0.02 for potentially usable suggestions. A `clarify` prediction must keep its top class; its score does not affect output because it always abstains. Both overall and suggestion probability differences are recorded, along with raw-logit differences. Raw logits are not a scale-independent accuracy measure. These probes check export plumbing, not generalization; subsequently assess the quantized model's end-to-end accuracy on the independent test set. Every export starts `approved:false` and with thresholds that reject everything until calibration. Confidence thresholds are calibrated against exact grounded plans, including the production compiler's validation.
 
 Use `train.py --smoke --max-steps 2 --epochs 1 --output …` for a cheap tooling check. It uses the real pinned Arabic tokenizer with a **tiny, randomly initialized** BERT. It is never a pretrained Arabic model and can never pass release approval. Smoke mode still needs the tokenizer download on its first run.
 
@@ -152,4 +154,38 @@ const proposal = await assistant.propose('اجمع ٣ كلمات بعد «ولك
 assistant.dispose(); // terminates the worker and releases its resources
 ```
 
-Do not automatically execute a proposed search or store raw requests as telemetry. Preserve the existing builder, saved-link serializer, filters, captures, exclusions and search engine. This change intentionally supplies the training path and optional adapter without activating an unevaluated model for app visitors.
+Do not automatically execute a proposed search or store raw requests as telemetry. Preserve the existing builder, saved-link serializer, filters, captures, exclusions and search engine.
+
+## Experimental website channel
+
+The website can also offer an explicitly experimental candidate before independent review. This channel **does not grant production approval or claim the production accuracy targets**. It requires real pretrained Arabic fine-tuning (not random smoke weights), calibrated abstention, at least 30 accepted draft evaluation requests with ≥95% exact-plan precision, and the user's acknowledgement in the UI. Results remain proposals requiring a separate apply action and then a separate search action. The original production loader remains closed unless its original approval conditions pass; experimental loading requires `experimental:true` and `release_channel:'experimental'`.
+
+The larger quantized candidate showed CPU/WASM probability differences even where decisions agreed. Website confidence is therefore calibrated and evaluated **on collected browser WASM scores**, rather than assuming CPU probabilities transfer unchanged. The stricter production probability-parity gate remains a separate unmet requirement; browser-native evaluation does not grant production approval.
+
+After training, export and build, collect browser scores using the local server described above:
+
+```bash
+npm run --prefix ml/arabic-planner/browser build
+/workspace/work/arabic-planner-venv/bin/python ml/arabic-planner/prepare_browser_evaluation.py \
+ --artifact /workspace/work/arabic-planner-model-v1 \
+ --output /workspace/work/browser-evaluation-input.json
+node scripts/collect-planner-scores.cjs \
+ http://127.0.0.1:8780/quran/ml/arabic-planner/browser/harness.html \
+ http://127.0.0.1:8780/work/arabic-planner-model-v1/ \
+ /workspace/work/browser-evaluation-input.json /workspace/work/browser-scores.json
+/workspace/work/arabic-planner-venv/bin/python ml/arabic-planner/evaluate.py \
+ --artifact /workspace/work/arabic-planner-model-v1 --calibrate \
+ --browser-scores /workspace/work/browser-scores.json \
+ --report /workspace/work/arabic-planner-browser-evaluation.json
+/workspace/work/arabic-planner-venv/bin/python ml/arabic-planner/publish_candidate.py \
+ --artifact /workspace/work/arabic-planner-model-v1 \
+ --evaluation /workspace/work/arabic-planner-browser-evaluation.json \
+ --experimental
+npm run release
+```
+
+This copies model and runtime assets to immutable, content-addressed `models/` directories with license notices. It writes the small `models/planner.json` registry, which the website reads only when the assistant is opened. The model/WASM download starts only after the user chooses to enable it. Runtime files have versioned paths so a cached worker cannot mix with a newer model. Existing published assets are never overwritten with different bytes. Keep previous model directories for saved browser sessions; remove old versions only through a separate deliberate maintenance change.
+
+Collected scores are tied to an inference fingerprint covering weights, tokenizer and runtime, excluding only the policy being fitted. The calibration split alone sets thresholds; test rows remain evaluation-only. The default collector uses the frozen draft splits and first training examples as demonstrations. Never put real user requests into a public score file without their authorization. The website publisher requires browser-native evaluation and refuses smoke models.
+
+To reproduce the website flow with a simulated adapter (UI behavior only): `node scripts/check-assistant-ui.cjs`. Real model browser parity and full page inference must be checked separately. Applying a proposal preserves an undo snapshot, clears conflicting global matching settings, maps reference filters, and uses the existing saved-link serializer when the user finally searches.

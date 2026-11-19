@@ -2,6 +2,7 @@
 const fs = require('node:fs');
 const crypto = require('node:crypto');
 const files = ['style.css', ...fs.readdirSync('js').filter(f => f.endsWith('.js') && !f.endsWith('.spec.js')).map(f => 'js/' + f), ...fs.readdirSync('view').filter(f => f.endsWith('.html')).map(f => 'view/' + f)].sort();
+if (fs.existsSync('models/planner.json')) files.push('models/planner.json');
 const digest = crypto.createHash('sha256');
 for (const file of files) { digest.update(file); digest.update(fs.readFileSync(file)); }
 // Include the document itself, neutralizing only generated release tokens.

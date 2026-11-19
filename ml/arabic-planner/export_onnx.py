@@ -66,21 +66,60 @@ def main():
         str(float_path),
         str(quantized),
         per_channel=True,
-        weight_type=QuantType.QInt8,
+        # U8/U8 avoids the saturating U8/S8 AVX2 path, keeping the Python CPU
+        # evaluator aligned with browser WASM without reducing embedding precision.
+        weight_type=QuantType.QUInt8,
         op_types_to_quantize=["MatMul", "Gather"],
     )
-    session = ort.InferenceSession(str(quantized), providers=["CPUExecutionProvider"])
+    session_options = ort.SessionOptions()
+    session_options.intra_op_num_threads = 2
+    session = ort.InferenceSession(
+        str(quantized), sess_options=session_options, providers=["CPUExecutionProvider"]
+    )
     maximum = 0.0
+    maximum_probability_difference = 0.0
+    maximum_suggestion_probability_difference = 0.0
     agreements = 0
     samples = ["ابحث عن «عبارة»", "اجمع رقم كلمات بعد «عبارة»", "أريد تفسير النص"]
+    # Probe every intent's training template as export plumbing, separately from
+    # held-out accuracy. Raw logits have an arbitrary scale; compare probabilities.
+    seen = set()
+    for line in (ROOT / "data/train.jsonl").read_text().splitlines():
+        row = json.loads(line)
+        if row["intent"] not in seen and row["model_input"]:
+            seen.add(row["intent"])
+            samples.append(row["model_input"])
+    samples = list(dict.fromkeys(samples))
     for text in samples:
         encoded = tokenizer(text, return_tensors="pt")
         expected = wrapper(*(encoded[name] for name in names)).detach().numpy()
         actual = session.run(None, {name: encoded[name].numpy() for name in names})[0]
+        if not np.isfinite(expected).all() or not np.isfinite(actual).all():
+            raise ValueError("Non-finite exported logits.")
+
+        def probabilities(values):
+            values = values - values.max(axis=-1, keepdims=True)
+            values = np.exp(values)
+            return values / values.sum(axis=-1, keepdims=True)
+
+        probability_difference = float(
+            np.max(np.abs(probabilities(actual) - probabilities(expected)))
+        )
+        maximum_probability_difference = max(
+            maximum_probability_difference, probability_difference
+        )
+        # Clarify always abstains regardless of its score; it must keep its top
+        # label, while the probability budget applies to potentially usable plans.
+        if model.config.id2label[int(expected.argmax())] != "clarify":
+            maximum_suggestion_probability_difference = max(
+                maximum_suggestion_probability_difference, probability_difference
+            )
         maximum = max(maximum, float(np.max(np.abs(actual - expected))))
         agreements += int(actual.argmax() == expected.argmax())
-    if not np.isfinite(maximum) or maximum > 0.15:
-        raise ValueError("Quantization drift exceeds smoke parity budget.")
+    if maximum_suggestion_probability_difference > 0.02 or agreements != len(samples):
+        raise ValueError(
+            "Quantization changes probe decisions or probabilities beyond the export budget."
+        )
     # Use only q8 at runtime; do not accidentally download the much larger float model.
     float_path.unlink()
     for name in [
@@ -136,7 +175,10 @@ def main():
         "browser_budget_bytes": spec["browser_budget_bytes"],
         "files": files,
         "quantization": {
+            "weight_type": "uint8",
             "max_logit_difference": maximum,
+            "max_probability_difference": maximum_probability_difference,
+            "max_suggestion_probability_difference": maximum_suggestion_probability_difference,
             "argmax_agreements": agreements,
             "sample_count": len(samples),
         },

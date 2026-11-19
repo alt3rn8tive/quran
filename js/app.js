@@ -1130,9 +1130,35 @@ myApp.controller('AyatSearchController', function ($scope, $window, $http, $rout
         return $scope.blockTypes.find(function (type) { return type.value === block.type; }).hint;
     };
     $scope.builderChanged = function () {
+        $scope.assistantUndo = null;
         $scope.builderError = '';
         $scope.hasInputError = false;
         $scope.queryEdited = true;
+    };
+    $scope.applyAssistantProposal = function (proposal) {
+        if (!proposal || proposal.status !== 'suggestion' || !Array.isArray(proposal.blocks) || !proposal.blocks.length || proposal.blocks.length > 30) return false;
+        var compiled = QuranQueryBuilder.compile(proposal.blocks), reference = proposal.reference || {surah:null, ayah:null};
+        if (compiled.error) return false;
+        if (reference.surah !== null || reference.ayah !== null) {
+            if (!Number.isInteger(reference.surah) || !Number.isInteger(reference.ayah) || !all_ayat.some(function (ayah) { return ayah.sura_id === reference.surah && ayah.verse_id === reference.ayah; })) return false;
+        }
+        var previous = angular.copy({blocks:$scope.queryBlocks, reference:$scope.reference, config:$scope.searchConfig, removeHarakah:$scope.shouldRemoveLastHarakah, savedOnly:$scope.savedQueryOnly, edited:$scope.queryEdited});
+        $scope.queryBlocks = QuranQueryBuilder.normalise(angular.copy(proposal.blocks));
+        $scope.queryBlocks.forEach(function (block) { block.id = ++nextBlockId; });
+        $scope.reference = angular.copy(reference);
+        $scope.searchConfig = {searchFromBeginning:false, searchOnEnd:false, excludePartOfWords:false, wordMatch:'contains'};
+        $scope.shouldRemoveLastHarakah = false;
+        $scope.savedQueryOnly = false;
+        $scope.builderChanged();
+        $scope.assistantUndo = previous;
+        focusBlock($scope.queryBlocks[0].id);
+        return true;
+    };
+    $scope.undoAssistantProposal = function () {
+        var previous = $scope.assistantUndo;if (!previous) return;
+        $scope.queryBlocks=previous.blocks;$scope.reference=previous.reference;$scope.searchConfig=previous.config;
+        $scope.shouldRemoveLastHarakah=previous.removeHarakah;$scope.savedQueryOnly=previous.savedOnly;$scope.queryEdited=previous.edited;
+        $scope.assistantUndo=null;
     };
     function focusBlock(id) {
         $timeout(function () {
@@ -1226,6 +1252,7 @@ myApp.controller('AyatSearchController', function ($scope, $window, $http, $rout
     }
 
     $scope.useExample = function (query) {
+        $scope.assistantUndo = null;
         $location.search({s: query});
         $scope.reference = {ayah: null, surah: null};
         restoreBuilder(query);
@@ -1262,6 +1289,7 @@ myApp.controller('AyatSearchController', function ($scope, $window, $http, $rout
     };
 
     $scope.searchButtonClicked = function () {
+        $scope.assistantUndo = null;
         if ($scope.savedQueryOnly) return;
         var compiled = QuranQueryBuilder.compile($scope.queryBlocks);
         $scope.builderError = compiled.error || '';

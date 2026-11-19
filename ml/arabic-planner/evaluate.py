@@ -39,6 +39,7 @@ def main():
     p = argparse.ArgumentParser()
     p.add_argument("--artifact", type=Path, required=True)
     p.add_argument("--calibrate", action="store_true")
+    p.add_argument("--browser-scores", type=Path)
     p.add_argument(
         "--calibration-data", type=Path, default=ROOT / "data/calibration.jsonl"
     )
@@ -48,8 +49,20 @@ def main():
     manifest = json.loads((a.artifact / "manifest.json").read_text())
     labels = manifest["labels"]
     tokenizer = AutoTokenizer.from_pretrained(a.artifact)
+    browser_scores = None
+    if a.browser_scores:
+        collected = json.loads(a.browser_scores.read_text())
+        if collected.get("engine") != "onnxruntime-web-wasm" or collected.get(
+            "inference_fingerprint"
+        ) != artifact_fingerprint(a.artifact, include_policy=False):
+            raise ValueError("Browser scores do not describe this inference artifact.")
+        browser_scores = {row["id"]: row for row in collected["rows"]}
+    session_options = ort.SessionOptions()
+    session_options.intra_op_num_threads = 2
+    session_options.inter_op_num_threads = 1
     session = ort.InferenceSession(
         str(a.artifact / "onnx/model_quantized.onnx"),
+        sess_options=session_options,
         providers=["CPUExecutionProvider"],
     )
 
@@ -71,6 +84,27 @@ def main():
             inputs = tokenizer(text, return_tensors="np", truncation=False)
             if inputs["input_ids"].shape[-1] > manifest["max_tokens"]:
                 results.append(None)
+                continue
+            if browser_scores is not None:
+                entry = browser_scores.get(row["id"])
+                if (
+                    not entry
+                    or entry["request"] != row["request"]
+                    or entry["model_input"] != text
+                ):
+                    raise ValueError(
+                        "Missing/mismatched browser evaluation row: " + row["id"]
+                    )
+                values = {item["label"]: item["score"] for item in entry["scores"]}
+                probabilities = np.array([values[label] for label in labels])
+                if (
+                    len(values) != len(labels)
+                    or not np.isfinite(probabilities).all()
+                    or (probabilities < 0).any()
+                    or abs(probabilities.sum() - 1) > 0.001
+                ):
+                    raise ValueError("Invalid browser score vector.")
+                results.append(np.log(np.maximum(probabilities, 1e-30)))
                 continue
             results.append(
                 session.run(
@@ -101,6 +135,26 @@ def main():
         probs = best[2]
         ranked = np.sort(probs, axis=1)
         top = probs.argmax(axis=1)
+        # Calibrate the system that users actually see: invalid assembled plans
+        # already abstain, and valid plans must match the complete gold settings.
+        grounded_rows = [
+            dict(row, intent=labels[int(prediction)])
+            for (row, _), prediction in zip(valid, top)
+        ]
+        grounded = json.loads(
+            subprocess.run(
+                ["node", str(ROOT / "bridge.cjs")],
+                input=json.dumps(
+                    {"operation": "candidate", "rows": grounded_rows},
+                    ensure_ascii=False,
+                ),
+                text=True,
+                capture_output=True,
+                check=True,
+            ).stdout
+        )
+        supported = np.array([row["status"] == "suggestion" for row in grounded])
+        exact = np.array([bool(row["correct"]) for row in grounded])
         thresholds = {}
         for idx, label in enumerate(labels):
             choice = None
@@ -110,11 +164,12 @@ def main():
                         (top == idx)
                         & (probs[:, idx] >= probability)
                         & ((ranked[:, -1] - ranked[:, -2]) >= margin)
+                        & supported
                     )
                     n = int(accept.sum())
                     if (
                         n >= 20
-                        and float((gold[accept] == idx).mean()) >= 0.99
+                        and float(exact[accept].mean()) >= 0.99
                         and (choice is None or n > choice[0])
                     ):
                         choice = (n, probability, margin)
@@ -123,6 +178,12 @@ def main():
                 "margin": choice[2] if choice else 1.0,
             }
         policy = {
+            "inference_engine": (
+                "onnxruntime-web-wasm"
+                if browser_scores is not None
+                else "onnxruntime-python-cpu"
+            ),
+            "calibration_target": "exact_grounded_plan",
             "temperature": best[1],
             "thresholds": thresholds,
             "calibration_sha256": hashlib.sha256(
@@ -205,6 +266,16 @@ def main():
             "precision_95_lower": wilson(n_correct, len(group)),
         }
     report = {
+        "inference_engine": (
+            "onnxruntime-web-wasm"
+            if browser_scores is not None
+            else "onnxruntime-python-cpu"
+        ),
+        "browser_scores_sha256": (
+            hashlib.sha256(a.browser_scores.read_bytes()).hexdigest()
+            if a.browser_scores
+            else None
+        ),
         "samples": len(examples),
         "accepted": len(accepted),
         "coverage": len(accepted) / max(1, len(examples)),
@@ -241,6 +312,54 @@ def main():
             for v in per_intent.values()
         )
     )
+    # Demo selection uses training examples only. It does not change policy or test metrics.
+    priority = [
+        "context_after",
+        "context_before",
+        "exclude_verse",
+        "exclude_word",
+        "cross_ayah",
+        "unknown_word",
+        "reference",
+    ]
+    demonstrations = []
+    source_rows = rows(ROOT / "data/train.jsonl")
+    for label in priority:
+        example = next((row for row in source_rows if row["intent"] == label), None)
+        if example:
+            demonstrations.append(example)
+    demo_outputs = infer(demonstrations)
+    demo_rows = []
+    for row, logits in zip(demonstrations, demo_outputs):
+        if logits is None:
+            continue
+        probabilities = softmax(np.asarray(logits)[None, :])[0]
+        demo_rows.append(
+            dict(
+                row,
+                scores=[
+                    {"label": label, "score": float(probabilities[i])}
+                    for i, label in enumerate(labels)
+                ],
+            )
+        )
+    demo_decisions = json.loads(
+        subprocess.run(
+            ["node", str(ROOT / "bridge.cjs")],
+            input=json.dumps(
+                {"operation": "evaluate", "policy": policy, "rows": demo_rows},
+                ensure_ascii=False,
+            ),
+            text=True,
+            capture_output=True,
+            check=True,
+        ).stdout
+    )
+    report["examples"] = [
+        row["request"]
+        for row, result in zip(demo_rows, demo_decisions)
+        if result["status"] == "suggestion" and result["correct"]
+    ][:3]
     a.report.write_text(json.dumps(report, indent=2) + "\n")
     print(json.dumps(report))
 

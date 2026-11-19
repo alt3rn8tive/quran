@@ -16,8 +16,12 @@ def main():
     p.add_argument("--output", type=Path, required=True)
     a = p.parse_args()
     tokenizer = AutoTokenizer.from_pretrained(a.artifact)
+    session_options = ort.SessionOptions()
+    session_options.intra_op_num_threads = 2
+    session_options.inter_op_num_threads = 1
     session = ort.InferenceSession(
         str(a.artifact / "onnx/model_quantized.onnx"),
+        sess_options=session_options,
         providers=["CPUExecutionProvider"],
     )
     manifest = json.loads((a.artifact / "manifest.json").read_text())

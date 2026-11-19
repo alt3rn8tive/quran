@@ -14,7 +14,12 @@ self.onmessage = async ({ data }) => {
                 await fetch(new URL("references.json", data.base))
             ).json();
             result = true;
-        } else if (data.type === "infer")
+        } else if (data.type === "scores")
+            result = {
+                tokens: planner.tokenize(data.text),
+                scores: await planner.scores(data.text),
+            };
+        else if (data.type === "infer")
             result = {
                 tokens: planner.tokenize(data.text),
                 scores: await planner.scores(data.text),

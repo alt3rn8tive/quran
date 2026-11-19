@@ -8,7 +8,15 @@ self.onmessage = ({ data }) => {
             let result;
             if (data.type === "load") {
                 if (planner) throw new Error("Planner already loaded");
-                planner = await loadPlanner(data.base, builder);
+                planner = await loadPlanner(data.base, builder, {
+                    experimental: data.experimental === true,
+                    onProgress: (progress) =>
+                        self.postMessage({
+                            id: data.id,
+                            event: "progress",
+                            progress,
+                        }),
+                });
                 result = { ready: true };
             } else if (data.type === "propose" && planner)
                 result = await planner.propose(data.text);

@@ -1,0 +1,33 @@
+<details class="search-assistant" id="arabic-search-assistant">
+    <summary ng-click="openAssistant()"><span>صِف بحثك بالعربية</span><span class="assistant-badge">مساعد تجريبي</span></summary>
+    <div class="assistant-body">
+        <p>اكتب ما تريد العثور عليه، وسأقترح أجزاء بحث قابلة للتعديل. يبقى تنفيذ البحث بيدك.</p>
+        <p class="assistant-experimental">هذا نموذج تجريبي دُرّب على أمثلة مولّدة. قد يخطئ في فهم الطلب؛ راجع النص والأعداد ونطاق الاستبعاد قبل البحث.</p>
+        <div ng-if="!assistant.info && assistant.status !== 'checking'"><button type="button" ng-click="openAssistant()">التحقق من توفر المساعد</button></div>
+        <div ng-if="assistant.info && ['idle','error'].includes(assistant.status)" class="assistant-enable">
+            <p>يعمل داخل متصفحك دون إرسال طلبك إلى خادم. التنزيل الأول نحو {{assistant.megabytes}} ميغابايت، وقد يستغرق وقتاً على الاتصال البطيء. يمكنك استخدام المحرر اليدوي في أي وقت.</p>
+            <p class="field-hint">مثال على طلب متاح: {{examples[0]}}</p>
+            <label ng-if="assistant.info.channel === 'experimental'"><input type="checkbox" ng-model="assistant.consent"> أفهم أنه تجريبي وسأراجع الأجزاء المقترحة.</label>
+            <button type="button" ng-click="enableAssistant()" ng-disabled="assistant.info.channel === 'experimental' && !assistant.consent">تنزيل وتشغيل المساعد</button>
+        </div>
+        <div ng-if="assistant.status === 'loading'" class="assistant-loading">
+            <progress ng-if="assistant.percent !== null" max="100" value="{{assistant.percent}}" aria-label="تقدم تحميل المساعد"></progress>
+            <button type="button" ng-click="cancelAssistant()">إلغاء التحميل</button>
+        </div>
+        <form ng-if="['ready','thinking','suggestion','clarify'].includes(assistant.status)" ng-submit="askAssistant()" novalidate>
+            <label for="assistant-request">ما البحث الذي تريده؟</label>
+            <textarea id="assistant-request" ng-model="assistant.text" ng-change="assistantTextChanged()" ng-trim="false" maxlength="640" rows="3" aria-describedby="assistant-instructions" placeholder="اجمع ٣ كلمات بعد «ولكن»"></textarea>
+            <p id="assistant-instructions" class="field-hint">ضع الكلمات المطلوبة بين «علامتي تنصيص»، واكتب الأعداد بالأرقام مثل ٣ أو 3. هذا الإصدار أنسب لالتقاط الكلمات والاستبعاد وتحديد السورة والآية. لبقية الأجزاء استخدم المحرر اليدوي؛ لا يقدم المساعد تفسيراً أو بحثاً بالمعنى.</p>
+            <div class="assistant-examples"><span>جرّب:</span><button type="button" ng-repeat="example in examples" ng-click="useAssistantExample(example)">{{example}}</button></div>
+            <div class="assistant-actions"><button type="submit" ng-disabled="!assistant.text.trim() || assistant.status === 'thinking'">{{assistant.status === 'thinking' ? 'جار فهم الطلب…' : 'اقترح أجزاء البحث'}}</button><button type="button" ng-click="cancelAssistant()">إيقاف المساعد</button></div>
+        </form>
+        <p class="assistant-status" role="status" aria-live="polite">{{assistant.message}}</p>
+        <section ng-if="assistant.proposal" class="assistant-proposal" aria-label="معاينة اقتراح المساعد">
+            <h3>الأجزاء المقترحة</h3>
+            <ol><li ng-repeat="block in assistant.proposal.blocks track by $index">{{assistantPreview(block)}}</li></ol>
+            <p ng-if="assistant.proposal.reference.surah">السورة {{assistant.proposal.reference.surah}} · الآية {{assistant.proposal.reference.ayah}}</p>
+            <p class="field-hint">سيستبدل هذا أجزاء المحرر الحالية. تستطيع التراجع بعد الإضافة، ولن يبدأ البحث تلقائياً.</p>
+            <button type="button" ng-click="applyAssistant()">استخدم هذه الأجزاء</button>
+        </section>
+    </div>
+</details>

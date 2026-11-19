@@ -1,5 +1,7 @@
 # What has actually been verified
 
+This is the historical tooling smoke record for commit `75da0e3`. The subsequently trained website candidate and its limitations are documented in [WEBSITE-RELEASE.md](WEBSITE-RELEASE.md).
+
 Date: 19 November 2026. This is tooling validation, **not production Arabic accuracy or physical-mobile certification**.
 
 | Check | Observed result |

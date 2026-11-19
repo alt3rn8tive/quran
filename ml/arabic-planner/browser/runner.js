@@ -1,4 +1,4 @@
-// Optional integration module. The app does not import or auto-download a model.
+// Optional inference runtime. Experimental candidates require an explicit opt-in.
 import { pipeline, env } from "./vendor/transformers.js";
 import "./planner-core.js";
 const core = globalThis.QuranArabicPlannerCore;
@@ -21,27 +21,67 @@ async function sha(value) {
         .map((x) => x.toString(16).padStart(2, "0"))
         .join("");
 }
+async function readBytes(response, budget, onBytes) {
+    if (!response.body?.getReader) {
+        const buffer = await response.arrayBuffer();
+        if (buffer.byteLength > budget)
+            throw new Error("Artifact exceeds the download budget.");
+        onBytes(buffer.byteLength);
+        return buffer;
+    }
+    const reader = response.body.getReader(),
+        chunks = [];
+    let size = 0;
+    while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        size += value.byteLength;
+        if (size > budget) {
+            await reader.cancel();
+            throw new Error("Artifact exceeds the download budget.");
+        }
+        chunks.push(value);
+        onBytes(size);
+    }
+    const bytes = new Uint8Array(size);
+    let offset = 0;
+    for (const chunk of chunks) {
+        bytes.set(chunk, offset);
+        offset += chunk.byteLength;
+    }
+    return bytes.buffer;
+}
 export async function loadPlanner(
     base,
     builder,
-    { testing = false, builderSourceURL = "../../../js/query-builder.js" } = {},
+    {
+        testing = false,
+        experimental = false,
+        onProgress = () => {},
+        builderSourceURL = "../../../js/query-builder.js",
+    } = {},
 ) {
     const url = new URL(base, location.href);
     if (url.origin !== location.origin)
         throw new Error("Planner artifacts must be hosted on the same origin.");
     if (!url.pathname.endsWith("/")) url.pathname += "/";
     const manifest = await json(new URL("manifest.json", url));
+    const approved =
+        manifest.approved === true &&
+        manifest.smoke_only === false &&
+        manifest.approval?.reviewer &&
+        manifest.approval.artifact_fingerprint ===
+            manifest.artifact_fingerprint;
+    const candidate =
+        experimental === true &&
+        manifest.release_channel === "experimental" &&
+        manifest.smoke_only === false;
     if (
         manifest.format !== "quran-arabic-planner" ||
         manifest.version !== 1 ||
         manifest.max_tokens !== 128 ||
         manifest.max_characters !== 640 ||
-        (!testing &&
-            (manifest.approved !== true ||
-                manifest.smoke_only !== false ||
-                !manifest.approval?.reviewer ||
-                manifest.approval.artifact_fingerprint !==
-                    manifest.artifact_fingerprint))
+        (!testing && !approved && !candidate)
     )
         throw new Error("No approved Arabic planner is available.");
     if (
@@ -51,6 +91,13 @@ export async function loadPlanner(
     )
         throw new Error("Model exceeds the browser download budget.");
     const files = {};
+    let lastProgress = "";
+    function progress(stage, percent) {
+        const key = stage + ":" + percent;
+        if (key === lastProgress) return;
+        lastProgress = key;
+        onProgress({ stage, percent });
+    }
     if (!manifest.files || Object.keys(manifest.files).length > 50)
         throw new Error("Invalid artifact file list.");
     let downloaded = 0;
@@ -64,7 +111,20 @@ export async function loadPlanner(
             throw new Error("Invalid artifact path/hash.");
         const response = await fetch(new URL(file, url));
         if (!response.ok) throw new Error("Missing " + file);
-        const bytes = await response.arrayBuffer();
+        const bytes = await readBytes(
+            response,
+            80 * 1024 * 1024 - downloaded,
+            (size) =>
+                progress(
+                    "verify",
+                    Math.min(
+                        100,
+                        Math.round(
+                            ((downloaded + size) / manifest.total_bytes) * 100,
+                        ),
+                    ),
+                ),
+        );
         downloaded += bytes.byteLength;
         if (downloaded > 80 * 1024 * 1024 || (await sha(bytes)) !== digest)
             throw new Error("Artifact size/hash mismatch: " + file);
@@ -75,9 +135,17 @@ export async function loadPlanner(
                 "policy.json",
                 "builder-contract.json",
                 "runtime-contract.json",
+                "training-report.json",
             ].includes(file)
         )
             files[file] = JSON.parse(new TextDecoder().decode(bytes));
+        progress(
+            "verify",
+            Math.min(
+                100,
+                Math.round((downloaded / manifest.total_bytes) * 100),
+            ),
+        );
     }
     if (
         downloaded !== manifest.total_bytes ||
@@ -94,6 +162,15 @@ export async function loadPlanner(
         ].some((file) => !manifest.files[file])
     )
         throw new Error("Incomplete artifact manifest.");
+    if (
+        candidate &&
+        (files["training-report.json"]?.smoke_only !== false ||
+            files["training-report.json"]?.training_steps < 100 ||
+            files["training-report.json"]?.backbone !==
+                "CAMeL-Lab/bert-base-arabic-camelbert-mix" ||
+            !Array.isArray(files["training-report.json"]?.retained_layers))
+    )
+        throw new Error("A genuinely fine-tuned Arabic candidate is required.");
     for (const file of [
         "planner-core.js",
         "runner.js",
@@ -136,6 +213,7 @@ export async function loadPlanner(
         dtype: "q8",
         device: "wasm",
         local_files_only: true,
+        progress_callback: () => progress("initialize", null),
     });
     const expected = files["catalog.json"].intents.map((row) => row.id);
     if (JSON.stringify(manifest.labels) !== JSON.stringify(expected))

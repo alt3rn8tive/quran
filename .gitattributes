@@ -1,0 +1,4 @@
+# Published assets are hashed byte-for-byte, including JSON and runtime source.
+models/** -text
+# Preserve generated third-party bundles verbatim, including their license text.
+models/runtime/**/vendor/* -whitespace

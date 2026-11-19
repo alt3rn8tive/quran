@@ -41,6 +41,12 @@ process.stdin.on("data", (c) => (data += c));
 process.stdin.on("end", () => {
     try {
         const input = JSON.parse(data);
+        if (
+            !["prepare", "evaluate", "predict", "candidate"].includes(
+                input.operation,
+            )
+        )
+            throw new Error("Unknown bridge operation");
         const rows = input.rows.map((row) => {
             let prepared;
             try {
