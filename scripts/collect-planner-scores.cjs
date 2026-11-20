@@ -14,7 +14,7 @@ const fs = require("node:fs"),
         const page = await browser.newPage();
         await page.goto(harness);
         await page.waitForFunction(() => window.plannerHarness);
-        const rows = await page.evaluate(
+        const collected = await page.evaluate(
             async ({ input, artifact }) => {
                 const worker = new Worker(
                     new URL("../tests/inference-worker.js", location.href),
@@ -37,30 +37,43 @@ const fs = require("node:fs"),
                     });
                 await call({ type: "load", base: artifact });
                 const rows = [];
+                const indices = new Map(),
+                    predictions = [];
                 for (const row of input.rows) {
                     if (!row.model_input) {
                         rows.push({ ...row, scores: null });
                         continue;
                     }
-                    const actual = await call({
-                        type: "scores",
-                        text: row.model_input,
+                    if (!indices.has(row.model_input)) {
+                        const actual = await call({
+                            type: "scores",
+                            text: row.model_input,
+                        });
+                        indices.set(row.model_input, predictions.length);
+                        predictions.push(actual.scores);
+                    }
+                    rows.push({
+                        ...row,
+                        score_index: indices.get(row.model_input),
                     });
-                    rows.push({ ...row, scores: actual.scores });
                 }
                 worker.terminate();
-                return rows;
+                return { rows, predictions };
             },
             { input, artifact: new URL(artifact, harness).href },
         );
         const output = {
             engine: "onnxruntime-web-wasm",
             inference_fingerprint: input.inference_fingerprint,
-            rows,
+            ...collected,
         };
         fs.writeFileSync(outputPath, JSON.stringify(output) + "\n");
         console.log(
-            JSON.stringify({ engine: output.engine, rows: rows.length }),
+            JSON.stringify({
+                engine: output.engine,
+                rows: collected.rows.length,
+                unique_inference_calls: collected.predictions.length,
+            }),
         );
     } finally {
         await browser.close();

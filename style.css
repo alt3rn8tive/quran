@@ -1172,4 +1172,6 @@ input[type=checkbox] { accent-color: var(--accent); width: 18px; height: 18px; }
 .assistant-proposal h3 { margin-top: 0; }
 .assistant-proposal li { padding-block: .4rem; overflow-wrap: anywhere; }
 .assistant-undo { padding: .8rem; border-radius: 10px; background: #fff4d9; }
+.assistant-settings { display:flex; flex-wrap:wrap; gap:.5rem; padding:0; list-style:none; }
+.assistant-settings li { padding:.3rem .65rem; border-radius:8px; background:#e7f3eb; color:#175b4b; font-size:.85rem; }
 @media (max-width:600px) { .assistant-body { padding-inline: .8rem; } .assistant-actions button, .assistant-enable > button { width: 100%; } .assistant-examples button { max-width: 100%; overflow-wrap: anywhere; } }

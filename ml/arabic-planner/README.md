@@ -6,7 +6,7 @@ Status: **opt-in experimental website integration; not production approved**. Th
 
 Use [CAMeL-Lab/bert-base-arabic-camelbert-mix](https://huggingface.co/CAMeL-Lab/bert-base-arabic-camelbert-mix), an Arabic BERT pretrained on Classical Arabic, Modern Standard Arabic and dialects. Its model card declares Apache-2.0. [model.json](model.json) pins revision `9be352797bdf28a9ae21e2ae582aaaca7abdb22d`; retain the original model attribution/license when distributing derived weights.
 
-For the browser candidate, retain pretrained embeddings and encoder layers **0, 2, 4, 7, 9, 11**, then fine-tune a 29-class classifier: 28 supported recipes and `clarify`. This is layer-pruned initialization, **not knowledge distillation**. Compare the smaller candidate with a full-size teacher during subsequent model research if it fails the release gates. Arabic pretraining alone does not establish suitability for this task.
+For the browser candidate, retain pretrained embeddings and encoder layers **0, 2, 4, 7, 9, 11**, then fine-tune the version-2 **48-class** classifier: 47 bounded recipes and `clarify`. This is layer-pruned initialization, **not knowledge distillation**. Training can initialize from the previous Arabic checkpoint, reusing classifier rows by label name and recording the source weight/report hashes. Arabic pretraining alone does not establish suitability for this task.
 
 The model chooses an intent only. Shared deterministic JavaScript extracts quoted strings and numeric counts, fills a closed recipe, and calls the actual `QuranQueryBuilder.compile`. It cannot generate regex, Quran text, arbitrary block types, or executable code. Unicode normalization applies to instruction matching; the quoted text is copied exactly, including hamza and harakat.
 
@@ -20,7 +20,7 @@ The model chooses an intent only. Shared deterministic JavaScript extracts quote
 
 The browser runs int8 ONNX through Transformers.js/WASM in a Web Worker, with one thread so GitHub Pages does not need cross-origin isolation. All inference assets are self-hosted. Nothing sends requests or Quran queries to an inference service. A user must explicitly request the optional download; the existing manual builder stays immediately available.
 
-## Supported first-version scope
+## Version-2 scope and all requested options
 
 See [catalog.json](catalog.json) for executable recipes and Arabic examples:
 
@@ -30,16 +30,24 @@ See [catalog.json](catalog.json) for executable recipes and Arabic examples:
 - Exact/ranged unknown letters; specific/unknown letter with harakah; shadda; optional specific letter.
 - Eight named Quranic signs, with optional preceding/following word captures.
 - Captured words between two texts; unknown word(s); a quoted text at an explicit surah/ayah reference.
+- All three orthogonal settings, in every combination: **في بداية الآية فقط**, **في نهاية الآية فقط**, **جمع النتائج دون الحركة الأخيرة**. They are extracted outside quoted literals and returned as three booleans in `settings`, independently of intent classification.
+- Standalone letter/unknown-letter/word/words/capture blocks, all five unknown-letter repetition modes, optional specific letters with any named harakah and shadda, lists of 2–10 alternatives, multiple exclusions with all four list matching modes, all gap/order variants, three consecutive ayat, cross-ayah starting references, and representative independent text-block modes.
 
-This is a bounded recipe classifier, not unrestricted natural-language search. Text must be quoted using `«…»`, `"…"` or `“…”`; counts must be digits, including Arabic-Indic/Persian digits. The first version does not parse written number words, combine arbitrary recipes, or combine a cross-ayah query with reference constraints. Ask for clarification or offer manual editing for these cases. Semantic, root, tafsir and grammatical searches are unsupported.
+This is a bounded recipe classifier, not unrestricted natural-language search. Text must be quoted using `«…»`, `"…"` or `“…”`; counts must be digits, including Arabic-Indic/Persian digits. Written number words and arbitrary unbounded compositions of blocks remain unsupported. An incomplete separator or exclusion without a positive search asks for clarification. Semantic, root, tafsir and grammatical searches are unsupported. Scope modifiers belong outside quoted text; a quoted phrase such as «في بداية الآية فقط» stays literal text.
 
-The reference recipe returns `{surah, ayah}` separately from blocks. An eventual app adapter must map these to the app's existing filters. For cross-ayah searches the existing starting-ayah semantics still apply. The production engine remains responsible for consecutive-ayah matching and surah boundaries. Saved links must continue to use `QuranSearchLink`, with the resulting validated blocks, rather than raw model output.
+Reference recipes return `{surah, ayah}` separately from blocks. The app adapter maps these to existing filters and maps `settings` to the existing beginning/end checkboxes and result-grouping switch. For cross-ayah searches the selected number is the starting ayah. The production engine remains responsible for consecutive-ayah matching and surah boundaries. Saved links use the existing `QuranSearchLink` keys; legacy saved links and older proposals without `settings` remain compatible.
 
 ## Data and review
 
-`data/*.jsonl` contains **4,096 synthetic draft examples**: 2,291 training, 598 validation, 607 calibration, and 600 test. Every row is marked `reviewed:false`. No item is represented as a real user request or human-approved gold answer. Targets contain real builder settings, not free-form explanations. [prepare_data.py](prepare_data.py) generates targets independently in Python and checks each against the shared assembler and production compiler through Node.
+The version-2 corpus contains **54,639 synthetic draft rows**: 29,335 training, 8,421 validation, 8,421 calibration, 8,424 test, plus 38 grounding-only adversarial fixtures. Fourteen separately authored demonstrations are not used for training, threshold fitting or test metrics. Every row is marked `reviewed:false`. No item is represented as a real user request or human-approved gold answer. Targets contain real builder settings and all three global options, not free-form explanations. [build_catalog.py](build_catalog.py) defines the Arabic template banks; [prepare_data.py](prepare_data.py) constructs gold targets independently in Python and validates them through the production compiler and shared assembler.
 
-Template families and quoted literal pools are separated between splits. The training set currently has one underlying template per recipe with polite-prefix variants. **This diversity is insufficient for a reliability claim.** The held-out synthetic templates are useful regression cases, not a substitute for independent evaluation. Fixed seeds, stable IDs and SHA-256 manifests make reproduction auditable.
+See [data/coverage.json](data/coverage.json) for the mapping of all **15 requested Arabic controls**, per-intent coverage and all eight global-option masks in every split. The corpus covers all 12 block types, named symbols, every selectable Arabic letter/harakah, shadda/optional combinations, numeric limits and reversed/invalid cases. Finite letter features use pairwise coverage; arbitrary infinite block compositions are not claimed.
+
+Training uses four underlying authored templates per intent, with additional typed-component and request-frame variants. Each validation/calibration/test cohort has two new authored templates per intent. Prefix variants share their base family ID. Exact requests and normalized masked model inputs are disjoint across the four splits, and conflicting intent labels are rejected. Word/phrase literal pools are disjoint; finite letter/harakah/symbol enums intentionally recur across cohorts. These synthetic families still cannot replace independent human Arabic evaluation.
+
+There are **2,938 unique masked training inputs**, rather than 29,335 distinct language patterns. `--deduplicate-inputs` avoids pretending that changing quoted words, numeric values or decoded global flags supplies new language evidence. Grounding-only invalid counts live in `adversarial.jsonl`: the model masks numbers, so training identical masked text as both a valid intent and `clarify` would be contradictory. Those cases test deterministic validation separately and do not inflate intent-generalization metrics.
+
+The original one-template corpus and its limited website model are preserved in repository history; `fixtures/catalog-v1.json` is used to reconstruct the expanded catalog reproducibly. Fixed seeds, stable IDs and SHA-256 manifests make changes auditable. All performance claims must identify the dataset version, raw row count, unique model inputs and cohort provenance.
 
 Before full training, collect and independently annotate natural Arabic requests: formal Arabic, common Gulf/Egyptian phrasing, spelling variants, negation, reversed argument order, extra constraints, contradictory requests, mixed digits, quotations, harakat and ambiguous exclusions. Add multiple genuinely different training families for every recipe. Add unsupported requests that closely resemble valid ones. Keep paraphrases of the same request in one split; deduplicate exact and near-duplicate requests before freezing evaluation.
 
@@ -65,6 +73,7 @@ npm run --prefix ml/arabic-planner/browser build
 HF_HOME=/workspace/work/arabic-planner-cache \
  /workspace/work/arabic-planner-venv/bin/python ml/arabic-planner/train.py \
  --data-dir ml/arabic-planner/data --epochs 8 \
+ --deduplicate-inputs \
  --output /workspace/work/arabic-planner-checkpoint
 
 /workspace/work/arabic-planner-venv/bin/python ml/arabic-planner/export_onnx.py \
@@ -107,7 +116,7 @@ node ml/arabic-planner/tests/browser.cjs \
  /workspace/work/arabic-planner-browser-report.json
 ```
 
-The checks compare exact token IDs, all 29 probabilities, confidence decisions and compiler output. They also verify rejection of corrupted weights, refusal of unapproved smoke models, worker loading and same-origin-only requests. A narrow desktop viewport **is not a physical mobile performance test**. The fixture's positive guided plans test deterministic assembly separately from the model; they are not model accuracy measurements. Browser timing includes two classifier passes per request for parity and is a conservative development measurement.
+The checks compare exact token IDs, all classifier probabilities, confidence decisions and compiler output. They also verify rejection of corrupted weights, refusal of unapproved smoke models, worker loading and same-origin-only requests. A narrow desktop viewport **is not a physical mobile performance test**. The fixture's positive guided plans test deterministic assembly separately from the model; they are not model accuracy measurements. Browser timing includes two classifier passes per request for parity and is a conservative development measurement.
 
 ## Release gates and eventual app integration
 
@@ -186,6 +195,6 @@ npm run release
 
 This copies model and runtime assets to immutable, content-addressed `models/` directories with license notices. It writes the small `models/planner.json` registry, which the website reads only when the assistant is opened. The model/WASM download starts only after the user chooses to enable it. Runtime files have versioned paths so a cached worker cannot mix with a newer model. Existing published assets are never overwritten with different bytes. Keep previous model directories for saved browser sessions; remove old versions only through a separate deliberate maintenance change.
 
-Collected scores are tied to an inference fingerprint covering weights, tokenizer and runtime, excluding only the policy being fitted. The calibration split alone sets thresholds; test rows remain evaluation-only. The default collector uses the frozen draft splits and first training examples as demonstrations. Never put real user requests into a public score file without their authorization. The website publisher requires browser-native evaluation and refuses smoke models.
+Collected scores are tied to an inference fingerprint covering weights, tokenizer and runtime, excluding only the policy being fitted. The calibration split alone sets thresholds; test rows remain evaluation-only. The collector uses the frozen calibration/test splits, one training probe per class, and the separate demonstrations file. It deduplicates inference by canonical model input while preserving every row for complete-plan evaluation. Never put real user requests into a public score file without their authorization. The website publisher requires browser-native evaluation and refuses smoke models.
 
-To reproduce the website flow with a simulated adapter (UI behavior only): `node scripts/check-assistant-ui.cjs`. Real model browser parity and full page inference must be checked separately. Applying a proposal preserves an undo snapshot, clears conflicting global matching settings, maps reference filters, and uses the existing saved-link serializer when the user finally searches.
+To reproduce the website flow with a simulated adapter (UI behavior only): `node scripts/check-assistant-ui.cjs`. Real model browser parity and full page inference must be checked separately. Applying a proposal preserves an undo snapshot, maps all three proposed global settings and reference filters, and uses the existing saved-link serializer when the user finally searches.

@@ -31,7 +31,7 @@ const base = process.argv[2] || "http://127.0.0.1:8780/quran/";
             await page.route("**/models/runtime/ui-test/client.js", (r) =>
                 r.fulfill({
                     contentType: "application/javascript",
-                    body: `export async function createPlanner(){return {async propose(){return {status:'suggestion',intent:'context_after',blocks:[{type:'context',value:'ولكن',count:3,direction:'after'}],reference:{surah:null,ayah:null}}},dispose(){}}}`,
+                    body: `export async function createPlanner(){return {async propose(){return {status:'suggestion',intent:'context_after',blocks:[{type:'context',value:'ولكن',count:3,direction:'after'}],reference:{surah:null,ayah:null},settings:{searchFromBeginning:true,searchOnEnd:false,removeLastHarakah:true}}},dispose(){}}}`,
                 }),
             );
             await page.goto(base + "#!/search");
@@ -60,12 +60,26 @@ const base = process.argv[2] || "http://127.0.0.1:8780/quran/";
             await enable.click();
             await page
                 .locator("#assistant-request")
-                .fill("اجمع ٣ كلمات بعد «ولكن»");
+                .fill(
+                    "اجمع ٣ كلمات بعد «ولكن»، في بداية الآية فقط، جمع النتائج دون الحركة الأخيرة",
+                );
             await page
                 .getByRole("button", { name: "اقترح أجزاء البحث", exact: true })
                 .click();
             await page.locator(".assistant-proposal").waitFor();
+            assert.equal(
+                await page.locator(".assistant-settings li").count(),
+                2,
+            );
             assert.equal(await initial.inputValue(), "علم");
+            assert.equal(
+                await page
+                    .locator(
+                        'input[ng-model="searchConfig.searchFromBeginning"]',
+                    )
+                    .isChecked(),
+                false,
+            );
             const urlBefore = page.url();
             await page
                 .getByRole("button", {
@@ -99,6 +113,26 @@ const base = process.argv[2] || "http://127.0.0.1:8780/quran/";
             const saved = page.url();
             await page.reload();
             await page.waitForSelector(".surrounding-controls");
+            assert.equal(
+                await page
+                    .locator(
+                        'input[ng-model="searchConfig.searchFromBeginning"]',
+                    )
+                    .isChecked(),
+                true,
+            );
+            assert.equal(
+                await page
+                    .locator('input[ng-model="searchConfig.searchOnEnd"]')
+                    .isChecked(),
+                false,
+            );
+            assert.equal(
+                await page
+                    .locator('input[ng-model="shouldRemoveLastHarakah"]')
+                    .isChecked(),
+                true,
+            );
             assert.equal(
                 await page
                     .locator(".surrounding-controls input[type=text]")

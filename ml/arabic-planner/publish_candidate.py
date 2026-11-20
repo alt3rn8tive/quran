@@ -67,6 +67,20 @@ def main():
         raise ValueError(
             "Candidate needs at least 30 accepted draft plans with >=95% exact precision. This is not production certification."
         )
+    if json.loads((ROOT / "catalog.json").read_text()).get("version", 1) >= 2:
+        if len(evaluation.get("per_block_type", {})) != 12 or any(
+            row["accepted"] < 1 for row in evaluation["per_block_type"].values()
+        ):
+            raise ValueError(
+                "The expanded candidate must demonstrate accepted held-out plans for every requested block type."
+            )
+        if any(
+            evaluation.get("per_global_option", {}).get(key, {}).get("accepted", 0) < 20
+            for key in ["searchFromBeginning", "searchOnEnd", "removeLastHarakah"]
+        ):
+            raise ValueError(
+                "All three global controls need accepted browser-evaluated plans."
+            )
     # Copy actual model attribution and the Apache-2.0 license, as declared upstream.
     shutil.copy2(ROOT / "MODEL-NOTICE.md", artifact / "MODEL-NOTICE.md")
     shutil.copy2(
@@ -111,7 +125,11 @@ def main():
         if source.is_file():
             copy_immutable(source, REPO / model_path / source.relative_to(artifact))
     info = {
-        "version": 1,
+        "version": (
+            2
+            if json.loads((ROOT / "catalog.json").read_text()).get("version", 1) >= 2
+            else 1
+        ),
         "channel": "experimental",
         "model": model_path.as_posix() + "/",
         "client": (runtime_path / "client.js").as_posix(),

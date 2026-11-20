@@ -1,16 +1,26 @@
 {
-  "generator_seed": 42019,
+  "version": 2,
+  "generator_seed": 42020,
   "human_reviewed": false,
   "files": {
-    "train": "73580bc6c779990fdb1bb17de0d2e49ca9adba62e70bdbf3c7eda5d54bf04407",
-    "validation": "93f2f3b637b2dec5f6a73980590f420c3a32c8887ea3356f8dd9a9e5ef6fc82a",
-    "calibration": "adf1a9c1460b9c564aedea00f068b88b783e610cc9da27356652131c3d140ceb",
-    "test": "8eb2b40ef2f28929200a9fcdd61f1d04f8d0dd6d76e5f8c04d446a476c43940b"
+    "train": "1addc606ab40164cca7f8d31f658721fab3989470e27b3193f8088498c842ab9",
+    "validation": "cd5345e23d447e2c9c3073c36728f67326c4917465bcd4fd31ddcfa21fd25765",
+    "calibration": "0066b147511619a8b3a9f1a2026c3e2b6d0d69560bacb985c5c3c07a7b1647a2",
+    "test": "93db6107f514127ca4d2367f9b16af19a8622667aeb06d63e834cff501b82bb9"
   },
   "counts": {
-    "train": 2291,
-    "validation": 598,
-    "calibration": 607,
-    "test": 600
-  }
+    "train": 29335,
+    "validation": 8421,
+    "calibration": 8421,
+    "test": 8424
+  },
+  "adversarial_rows": 38,
+  "adversarial_sha256": "ef2096f9c9f948545fb600a991b0bdd5d1669ba29777ec08efeac3cadb3526d4",
+  "unique_model_inputs": {
+    "train": 2938,
+    "validation": 741,
+    "calibration": 740,
+    "test": 740
+  },
+  "demonstration_rows": 14
 }

@@ -56,7 +56,17 @@ def main():
             "inference_fingerprint"
         ) != artifact_fingerprint(a.artifact, include_policy=False):
             raise ValueError("Browser scores do not describe this inference artifact.")
-        browser_scores = {row["id"]: row for row in collected["rows"]}
+        browser_scores = {
+            row["id"]: dict(
+                row,
+                scores=(
+                    collected["predictions"][row["score_index"]]
+                    if row.get("score_index") is not None
+                    else row.get("scores")
+                ),
+            )
+            for row in collected["rows"]
+        }
     session_options = ort.SessionOptions()
     session_options.intra_op_num_threads = 2
     session_options.inter_op_num_threads = 1
@@ -167,15 +177,19 @@ def main():
                         & supported
                     )
                     n = int(accept.sum())
+                    families = {
+                        valid[i][0]["family_id"] for i in np.flatnonzero(accept)
+                    }
                     if (
                         n >= 20
                         and float(exact[accept].mean()) >= 0.99
                         and (choice is None or n > choice[0])
                     ):
-                        choice = (n, probability, margin)
+                        choice = (n, probability, margin, len(families))
             thresholds[label] = {
                 "probability": choice[1] if choice else 1.1,
                 "margin": choice[2] if choice else 1.0,
+                "calibration_families": choice[3] if choice else 0,
             }
         policy = {
             "inference_engine": (
@@ -297,6 +311,84 @@ def main():
         x["status"] == "suggestion" and row["expected"]["status"] == "suggestion"
         for x, row in zip(evaluated, examples)
     ) / max(1, len(examples) - len(ood))
+
+    def coverage_for(indices):
+        selected = [evaluated[i] for i in indices]
+        accepted_here = [row for row in selected if row["status"] == "suggestion"]
+        return {
+            "supported_requests": len(selected),
+            "accepted": len(accepted_here),
+            "precision": sum(row["correct"] for row in accepted_here)
+            / max(1, len(accepted_here)),
+            "coverage": len(accepted_here) / max(1, len(selected)),
+        }
+
+    block_types = sorted(
+        {
+            block["type"]
+            for row in examples
+            for block in row["expected"].get("blocks", [])
+        }
+    )
+    report["per_block_type"] = {
+        type_: coverage_for(
+            [
+                i
+                for i, row in enumerate(examples)
+                if any(
+                    block["type"] == type_
+                    for block in row["expected"].get("blocks", [])
+                )
+            ]
+        )
+        for type_ in block_types
+    }
+    report["per_global_option"] = {
+        key: coverage_for(
+            [
+                i
+                for i, row in enumerate(examples)
+                if row["expected"].get("settings", {}).get(key)
+            ]
+        )
+        for key in ["searchFromBeginning", "searchOnEnd", "removeLastHarakah"]
+    }
+    report["per_option_mask"] = {
+        str(bits): coverage_for(
+            [
+                i
+                for i, row in enumerate(examples)
+                if row["expected"]["status"] == "suggestion"
+                and sum(
+                    (1 << bit)
+                    for bit, key in enumerate(
+                        ["searchFromBeginning", "searchOnEnd", "removeLastHarakah"]
+                    )
+                    if row["expected"].get("settings", {}).get(key)
+                )
+                == bits
+            ]
+        )
+        for bits in range(8)
+    }
+    if (ROOT / "data/adversarial.jsonl").exists():
+        adversarial = rows(ROOT / "data/adversarial.jsonl")
+        checked = json.loads(
+            subprocess.run(
+                ["node", str(ROOT / "bridge.cjs")],
+                input=json.dumps(
+                    {"operation": "candidate", "rows": adversarial}, ensure_ascii=False
+                ),
+                text=True,
+                capture_output=True,
+                check=True,
+            ).stdout
+        )
+        report["grounding_adversarial"] = {
+            "rows": len(checked),
+            "rejected": sum(row["status"] == "clarify" for row in checked),
+            "classification_metric": False,
+        }
     report["statistical_gates_pass"] = (
         not manifest["smoke_only"]
         and report["all_reviewed"]
@@ -312,7 +404,7 @@ def main():
             for v in per_intent.values()
         )
     )
-    # Demo selection uses training examples only. It does not change policy or test metrics.
+    # Demonstrations are separate from training, threshold fitting and test metrics.
     priority = [
         "context_after",
         "context_before",
@@ -328,6 +420,8 @@ def main():
         example = next((row for row in source_rows if row["intent"] == label), None)
         if example:
             demonstrations.append(example)
+    if (ROOT / "data/demonstrations.jsonl").exists():
+        demonstrations = rows(ROOT / "data/demonstrations.jsonl")
     demo_outputs = infer(demonstrations)
     demo_rows = []
     for row, logits in zip(demonstrations, demo_outputs):
@@ -359,7 +453,7 @@ def main():
         row["request"]
         for row, result in zip(demo_rows, demo_decisions)
         if result["status"] == "suggestion" and result["correct"]
-    ][:3]
+    ][:14]
     a.report.write_text(json.dumps(report, indent=2) + "\n")
     print(json.dumps(report))
 

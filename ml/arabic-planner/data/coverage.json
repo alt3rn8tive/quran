@@ -1,0 +1,2858 @@
+{
+  "version": 2,
+  "requested_options": {
+    "في بداية الآية فقط": "settings.searchFromBeginning",
+    "في نهاية الآية فقط": "settings.searchOnEnd",
+    "جمع النتائج دون الحركة الأخيرة": "settings.removeLastHarakah",
+    "فاصل آية": "ayahBreak",
+    "كلمة أو عبارة": "text",
+    "أحد هذه الخيارات": "alternatives",
+    "شرط استبعاد": "exclude",
+    "علامة قرآنية": "symbol",
+    "حرف وحركته": "letter",
+    "حروف غير محددة": "letters",
+    "كلمة غير محددة": "word",
+    "كلمة أو أكثر": "words",
+    "جمع كلمات في هذا الموضع": "capture",
+    "كلمات قبل عبارة أو بعدها": "context",
+    "المسافة بين عبارتين": "between"
+  },
+  "counts": {
+    "train": 29335,
+    "validation": 8421,
+    "calibration": 8421,
+    "test": 8424
+  },
+  "by_split": {
+    "train": {
+      "text_contains": {
+        "rows": 510,
+        "families": 4,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 16
+      },
+      "text_whole": {
+        "rows": 511,
+        "families": 4,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 16
+      },
+      "text_starts": {
+        "rows": 512,
+        "families": 4,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 16
+      },
+      "text_ends": {
+        "rows": 510,
+        "families": 4,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 16
+      },
+      "text_phrase": {
+        "rows": 505,
+        "families": 4,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 16
+      },
+      "context_before": {
+        "rows": 512,
+        "families": 4,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 16
+      },
+      "context_after": {
+        "rows": 512,
+        "families": 4,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 16
+      },
+      "between_adjacent": {
+        "rows": 512,
+        "families": 4,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 16
+      },
+      "between_exact": {
+        "rows": 512,
+        "families": 4,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 16
+      },
+      "between_range": {
+        "rows": 512,
+        "families": 4,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 16
+      },
+      "between_either": {
+        "rows": 512,
+        "families": 4,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 16
+      },
+      "cross_ayah": {
+        "rows": 512,
+        "families": 4,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 16
+      },
+      "alternatives": {
+        "rows": 1088,
+        "families": 4,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 256
+      },
+      "exclude_verse": {
+        "rows": 1088,
+        "families": 4,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 256
+      },
+      "exclude_word": {
+        "rows": 1088,
+        "families": 4,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 256
+      },
+      "letters_exact": {
+        "rows": 512,
+        "families": 4,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 16
+      },
+      "letters_range": {
+        "rows": 512,
+        "families": 4,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 16
+      },
+      "letter_optional": {
+        "rows": 512,
+        "families": 4,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 16
+      },
+      "symbol_only": {
+        "rows": 1024,
+        "families": 4,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 256
+      },
+      "symbol_before": {
+        "rows": 1024,
+        "families": 4,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 256
+      },
+      "symbol_after": {
+        "rows": 1024,
+        "families": 4,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 256
+      },
+      "capture_between": {
+        "rows": 512,
+        "families": 4,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 16
+      },
+      "unknown_word": {
+        "rows": 512,
+        "families": 4,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 16
+      },
+      "unknown_words": {
+        "rows": 512,
+        "families": 4,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 16
+      },
+      "reference": {
+        "rows": 512,
+        "families": 4,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 16
+      },
+      "letter_specific": {
+        "rows": 2144,
+        "families": 4,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 512
+      },
+      "letter_any": {
+        "rows": 1088,
+        "families": 4,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 256
+      },
+      "letters_one": {
+        "rows": 512,
+        "families": 4,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 16
+      },
+      "letters_one_only": {
+        "rows": 464,
+        "families": 4,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 16
+      },
+      "letters_many": {
+        "rows": 512,
+        "families": 4,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 16
+      },
+      "letters_many_only": {
+        "rows": 464,
+        "families": 4,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 16
+      },
+      "letters_zero": {
+        "rows": 512,
+        "families": 4,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 16
+      },
+      "letters_zero_only": {
+        "rows": 464,
+        "families": 4,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 16
+      },
+      "letters_exact_only": {
+        "rows": 512,
+        "families": 4,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 16
+      },
+      "letters_range_only": {
+        "rows": 489,
+        "families": 4,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 16
+      },
+      "word_only": {
+        "rows": 464,
+        "families": 4,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 16
+      },
+      "words_only": {
+        "rows": 464,
+        "families": 4,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 16
+      },
+      "capture_only": {
+        "rows": 512,
+        "families": 4,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 16
+      },
+      "capture_after_text": {
+        "rows": 512,
+        "families": 4,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 16
+      },
+      "capture_before_text": {
+        "rows": 512,
+        "families": 4,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 16
+      },
+      "between_adjacent_either": {
+        "rows": 512,
+        "families": 4,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 16
+      },
+      "between_range_either": {
+        "rows": 512,
+        "families": 4,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 16
+      },
+      "between_any": {
+        "rows": 512,
+        "families": 4,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 16
+      },
+      "between_any_either": {
+        "rows": 512,
+        "families": 4,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 16
+      },
+      "cross_ayah_three": {
+        "rows": 512,
+        "families": 4,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 16
+      },
+      "cross_ayah_reference": {
+        "rows": 512,
+        "families": 4,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 16
+      },
+      "mixed_text": {
+        "rows": 512,
+        "families": 4,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 16
+      }
+    },
+    "validation": {
+      "text_contains": {
+        "rows": 128,
+        "families": 2,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 4
+      },
+      "text_whole": {
+        "rows": 128,
+        "families": 2,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 4
+      },
+      "text_starts": {
+        "rows": 128,
+        "families": 2,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 4
+      },
+      "text_ends": {
+        "rows": 128,
+        "families": 2,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 4
+      },
+      "text_phrase": {
+        "rows": 125,
+        "families": 2,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 4
+      },
+      "context_before": {
+        "rows": 128,
+        "families": 2,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 4
+      },
+      "context_after": {
+        "rows": 128,
+        "families": 2,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 4
+      },
+      "between_adjacent": {
+        "rows": 128,
+        "families": 2,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 4
+      },
+      "between_exact": {
+        "rows": 128,
+        "families": 2,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 4
+      },
+      "between_range": {
+        "rows": 128,
+        "families": 2,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 4
+      },
+      "between_either": {
+        "rows": 128,
+        "families": 2,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 4
+      },
+      "cross_ayah": {
+        "rows": 128,
+        "families": 2,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 4
+      },
+      "alternatives": {
+        "rows": 320,
+        "families": 2,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 64
+      },
+      "exclude_verse": {
+        "rows": 320,
+        "families": 2,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 64
+      },
+      "exclude_word": {
+        "rows": 320,
+        "families": 2,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 64
+      },
+      "letters_exact": {
+        "rows": 128,
+        "families": 2,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 4
+      },
+      "letters_range": {
+        "rows": 128,
+        "families": 2,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 4
+      },
+      "letter_optional": {
+        "rows": 128,
+        "families": 2,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 4
+      },
+      "symbol_only": {
+        "rows": 256,
+        "families": 2,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 64
+      },
+      "symbol_before": {
+        "rows": 256,
+        "families": 2,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 64
+      },
+      "symbol_after": {
+        "rows": 256,
+        "families": 2,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 64
+      },
+      "capture_between": {
+        "rows": 128,
+        "families": 2,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 4
+      },
+      "unknown_word": {
+        "rows": 128,
+        "families": 2,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 4
+      },
+      "unknown_words": {
+        "rows": 128,
+        "families": 2,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 4
+      },
+      "reference": {
+        "rows": 128,
+        "families": 2,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 4
+      },
+      "letter_specific": {
+        "rows": 1376,
+        "families": 2,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 128
+      },
+      "letter_any": {
+        "rows": 320,
+        "families": 2,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 64
+      },
+      "letters_one": {
+        "rows": 128,
+        "families": 2,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 4
+      },
+      "letters_one_only": {
+        "rows": 116,
+        "families": 2,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 4
+      },
+      "letters_many": {
+        "rows": 128,
+        "families": 2,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 4
+      },
+      "letters_many_only": {
+        "rows": 116,
+        "families": 2,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 4
+      },
+      "letters_zero": {
+        "rows": 128,
+        "families": 2,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 4
+      },
+      "letters_zero_only": {
+        "rows": 116,
+        "families": 2,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 4
+      },
+      "letters_exact_only": {
+        "rows": 128,
+        "families": 2,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 4
+      },
+      "letters_range_only": {
+        "rows": 122,
+        "families": 2,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 4
+      },
+      "word_only": {
+        "rows": 116,
+        "families": 2,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 4
+      },
+      "words_only": {
+        "rows": 116,
+        "families": 2,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 4
+      },
+      "capture_only": {
+        "rows": 128,
+        "families": 2,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 4
+      },
+      "capture_after_text": {
+        "rows": 128,
+        "families": 2,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 4
+      },
+      "capture_before_text": {
+        "rows": 128,
+        "families": 2,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 4
+      },
+      "between_adjacent_either": {
+        "rows": 128,
+        "families": 2,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 4
+      },
+      "between_range_either": {
+        "rows": 127,
+        "families": 2,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 4
+      },
+      "between_any": {
+        "rows": 128,
+        "families": 2,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 4
+      },
+      "between_any_either": {
+        "rows": 128,
+        "families": 2,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 4
+      },
+      "cross_ayah_three": {
+        "rows": 128,
+        "families": 2,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 4
+      },
+      "cross_ayah_reference": {
+        "rows": 128,
+        "families": 2,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 4
+      },
+      "mixed_text": {
+        "rows": 128,
+        "families": 2,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 4
+      }
+    },
+    "calibration": {
+      "text_contains": {
+        "rows": 126,
+        "families": 2,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 4
+      },
+      "text_whole": {
+        "rows": 127,
+        "families": 2,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 4
+      },
+      "text_starts": {
+        "rows": 127,
+        "families": 2,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 4
+      },
+      "text_ends": {
+        "rows": 128,
+        "families": 2,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 4
+      },
+      "text_phrase": {
+        "rows": 126,
+        "families": 2,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 4
+      },
+      "context_before": {
+        "rows": 128,
+        "families": 2,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 4
+      },
+      "context_after": {
+        "rows": 128,
+        "families": 2,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 4
+      },
+      "between_adjacent": {
+        "rows": 128,
+        "families": 2,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 4
+      },
+      "between_exact": {
+        "rows": 128,
+        "families": 2,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 4
+      },
+      "between_range": {
+        "rows": 128,
+        "families": 2,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 4
+      },
+      "between_either": {
+        "rows": 128,
+        "families": 2,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 4
+      },
+      "cross_ayah": {
+        "rows": 128,
+        "families": 2,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 4
+      },
+      "alternatives": {
+        "rows": 320,
+        "families": 2,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 64
+      },
+      "exclude_verse": {
+        "rows": 320,
+        "families": 2,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 64
+      },
+      "exclude_word": {
+        "rows": 320,
+        "families": 2,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 64
+      },
+      "letters_exact": {
+        "rows": 128,
+        "families": 2,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 4
+      },
+      "letters_range": {
+        "rows": 128,
+        "families": 2,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 4
+      },
+      "letter_optional": {
+        "rows": 128,
+        "families": 2,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 4
+      },
+      "symbol_only": {
+        "rows": 256,
+        "families": 2,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 64
+      },
+      "symbol_before": {
+        "rows": 256,
+        "families": 2,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 64
+      },
+      "symbol_after": {
+        "rows": 256,
+        "families": 2,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 64
+      },
+      "capture_between": {
+        "rows": 128,
+        "families": 2,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 4
+      },
+      "unknown_word": {
+        "rows": 128,
+        "families": 2,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 4
+      },
+      "unknown_words": {
+        "rows": 128,
+        "families": 2,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 4
+      },
+      "reference": {
+        "rows": 128,
+        "families": 2,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 4
+      },
+      "letter_specific": {
+        "rows": 1376,
+        "families": 2,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 128
+      },
+      "letter_any": {
+        "rows": 320,
+        "families": 2,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 64
+      },
+      "letters_one": {
+        "rows": 128,
+        "families": 2,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 4
+      },
+      "letters_one_only": {
+        "rows": 116,
+        "families": 2,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 4
+      },
+      "letters_many": {
+        "rows": 128,
+        "families": 2,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 4
+      },
+      "letters_many_only": {
+        "rows": 116,
+        "families": 2,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 4
+      },
+      "letters_zero": {
+        "rows": 128,
+        "families": 2,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 4
+      },
+      "letters_zero_only": {
+        "rows": 116,
+        "families": 2,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 4
+      },
+      "letters_exact_only": {
+        "rows": 128,
+        "families": 2,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 4
+      },
+      "letters_range_only": {
+        "rows": 122,
+        "families": 2,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 4
+      },
+      "word_only": {
+        "rows": 116,
+        "families": 2,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 4
+      },
+      "words_only": {
+        "rows": 116,
+        "families": 2,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 4
+      },
+      "capture_only": {
+        "rows": 128,
+        "families": 2,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 4
+      },
+      "capture_after_text": {
+        "rows": 128,
+        "families": 2,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 4
+      },
+      "capture_before_text": {
+        "rows": 128,
+        "families": 2,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 4
+      },
+      "between_adjacent_either": {
+        "rows": 128,
+        "families": 2,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 4
+      },
+      "between_range_either": {
+        "rows": 128,
+        "families": 2,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 4
+      },
+      "between_any": {
+        "rows": 128,
+        "families": 2,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 4
+      },
+      "between_any_either": {
+        "rows": 128,
+        "families": 2,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 4
+      },
+      "cross_ayah_three": {
+        "rows": 128,
+        "families": 2,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 4
+      },
+      "cross_ayah_reference": {
+        "rows": 128,
+        "families": 2,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 4
+      },
+      "mixed_text": {
+        "rows": 128,
+        "families": 2,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 4
+      }
+    },
+    "test": {
+      "text_contains": {
+        "rows": 128,
+        "families": 2,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 4
+      },
+      "text_whole": {
+        "rows": 128,
+        "families": 2,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 4
+      },
+      "text_starts": {
+        "rows": 127,
+        "families": 2,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 4
+      },
+      "text_ends": {
+        "rows": 127,
+        "families": 2,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 4
+      },
+      "text_phrase": {
+        "rows": 128,
+        "families": 2,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 4
+      },
+      "context_before": {
+        "rows": 128,
+        "families": 2,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 4
+      },
+      "context_after": {
+        "rows": 128,
+        "families": 2,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 4
+      },
+      "between_adjacent": {
+        "rows": 128,
+        "families": 2,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 4
+      },
+      "between_exact": {
+        "rows": 128,
+        "families": 2,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 4
+      },
+      "between_range": {
+        "rows": 128,
+        "families": 2,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 4
+      },
+      "between_either": {
+        "rows": 128,
+        "families": 2,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 4
+      },
+      "cross_ayah": {
+        "rows": 128,
+        "families": 2,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 4
+      },
+      "alternatives": {
+        "rows": 320,
+        "families": 2,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 64
+      },
+      "exclude_verse": {
+        "rows": 320,
+        "families": 2,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 64
+      },
+      "exclude_word": {
+        "rows": 320,
+        "families": 2,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 64
+      },
+      "letters_exact": {
+        "rows": 128,
+        "families": 2,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 4
+      },
+      "letters_range": {
+        "rows": 128,
+        "families": 2,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 4
+      },
+      "letter_optional": {
+        "rows": 128,
+        "families": 2,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 4
+      },
+      "symbol_only": {
+        "rows": 256,
+        "families": 2,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 64
+      },
+      "symbol_before": {
+        "rows": 256,
+        "families": 2,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 64
+      },
+      "symbol_after": {
+        "rows": 256,
+        "families": 2,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 64
+      },
+      "capture_between": {
+        "rows": 128,
+        "families": 2,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 4
+      },
+      "unknown_word": {
+        "rows": 128,
+        "families": 2,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 4
+      },
+      "unknown_words": {
+        "rows": 128,
+        "families": 2,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 4
+      },
+      "reference": {
+        "rows": 128,
+        "families": 2,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 4
+      },
+      "letter_specific": {
+        "rows": 1376,
+        "families": 2,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 128
+      },
+      "letter_any": {
+        "rows": 320,
+        "families": 2,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 64
+      },
+      "letters_one": {
+        "rows": 128,
+        "families": 2,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 4
+      },
+      "letters_one_only": {
+        "rows": 116,
+        "families": 2,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 4
+      },
+      "letters_many": {
+        "rows": 128,
+        "families": 2,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 4
+      },
+      "letters_many_only": {
+        "rows": 116,
+        "families": 2,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 4
+      },
+      "letters_zero": {
+        "rows": 128,
+        "families": 2,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 4
+      },
+      "letters_zero_only": {
+        "rows": 116,
+        "families": 2,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 4
+      },
+      "letters_exact_only": {
+        "rows": 128,
+        "families": 2,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 4
+      },
+      "letters_range_only": {
+        "rows": 122,
+        "families": 2,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 4
+      },
+      "word_only": {
+        "rows": 116,
+        "families": 2,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 4
+      },
+      "words_only": {
+        "rows": 116,
+        "families": 2,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 4
+      },
+      "capture_only": {
+        "rows": 128,
+        "families": 2,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 4
+      },
+      "capture_after_text": {
+        "rows": 128,
+        "families": 2,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 4
+      },
+      "capture_before_text": {
+        "rows": 128,
+        "families": 2,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 4
+      },
+      "between_adjacent_either": {
+        "rows": 128,
+        "families": 2,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 4
+      },
+      "between_range_either": {
+        "rows": 128,
+        "families": 2,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 4
+      },
+      "between_any": {
+        "rows": 128,
+        "families": 2,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 4
+      },
+      "between_any_either": {
+        "rows": 128,
+        "families": 2,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 4
+      },
+      "cross_ayah_three": {
+        "rows": 128,
+        "families": 2,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 4
+      },
+      "cross_ayah_reference": {
+        "rows": 128,
+        "families": 2,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 4
+      },
+      "mixed_text": {
+        "rows": 128,
+        "families": 2,
+        "option_masks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "unique_model_inputs": 4
+      }
+    }
+  },
+  "human_reviewed": false,
+  "finite_coverage": "All block types, all eight global-option masks per positive intent, complete named enums, numeric boundaries and pairwise letter/mark/shadda/optional/global settings. Arbitrary unbounded block compositions are not claimed."
+}

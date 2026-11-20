@@ -24,6 +24,11 @@ def main():
         if row["intent"] not in seen:
             rows.append(row)
             seen.add(row["intent"])
+    if (ROOT / "data/demonstrations.jsonl").exists():
+        rows.extend(
+            json.loads(line)
+            for line in (ROOT / "data/demonstrations.jsonl").read_text().splitlines()
+        )
     prepared = json.loads(
         subprocess.run(
             ["node", str(ROOT / "preprocess.cjs")],

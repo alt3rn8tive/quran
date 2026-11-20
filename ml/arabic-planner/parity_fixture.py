@@ -27,9 +27,17 @@ def main():
     manifest = json.loads((a.artifact / "manifest.json").read_text())
     policy = json.loads((a.artifact / "policy.json").read_text())
     labels = manifest["labels"]
-    examples = [
+    all_examples = [
         json.loads(line) for line in (ROOT / "data/test.jsonl").read_text().splitlines()
-    ][::5]
+    ]
+    examples = []
+    for label in labels:
+        group = [row for row in all_examples if row["intent"] == label]
+        if group:
+            examples.extend(
+                group[min(len(group) - 1, int(i * (len(group) - 1) / 2))]
+                for i in range(3)
+            )
     prepared = json.loads(
         subprocess.run(
             ["node", str(ROOT / "preprocess.cjs")],

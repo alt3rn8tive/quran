@@ -14,7 +14,19 @@ const base = process.argv[2] || "http://127.0.0.1:8780/quran/";
         .trim()
         .split("\n")
         .map(JSON.parse);
-    const gold = training.find(
+    const demonstrations = fs.existsSync(
+        "ml/arabic-planner/data/demonstrations.jsonl",
+    )
+        ? fs
+              .readFileSync(
+                  "ml/arabic-planner/data/demonstrations.jsonl",
+                  "utf8",
+              )
+              .trim()
+              .split("\n")
+              .map(JSON.parse)
+        : [];
+    const gold = [...training, ...demonstrations].find(
         (row) => row.request === info.examples[0],
     ).expected;
     const browser = await chromium.launch({
@@ -52,7 +64,7 @@ const base = process.argv[2] || "http://127.0.0.1:8780/quran/";
             .getByRole("button", { name: "اقترح أجزاء البحث", exact: true })
             .click();
         await page.waitForSelector(".assistant-proposal", { timeout: 60000 });
-        const valid = await page.evaluate((gold) => {
+        const matchesGold = (gold) => {
             const proposed = angular
                 .element(document.querySelector("quran-search-assistant"))
                 .isolateScope().assistant.proposal;
@@ -72,10 +84,53 @@ const base = process.argv[2] || "http://127.0.0.1:8780/quran/";
                         canonical(QuranQueryBuilder.normalise(gold.blocks)),
                     ) &&
                 JSON.stringify(canonical(proposed.reference)) ===
-                    JSON.stringify(canonical(gold.reference))
+                    JSON.stringify(canonical(gold.reference)) &&
+                JSON.stringify(canonical(proposed.settings || {})) ===
+                    JSON.stringify(canonical(gold.settings || {}))
             );
-        }, gold);
+        };
+        const valid = await page.evaluate(matchesGold, gold);
         assert.ok(valid, "Real model proposes the exact intended settings");
+        assert.equal(
+            await page.locator(".assistant-examples button").count(),
+            info.examples.length,
+        );
+        if (info.examples.length > 3)
+            await page.locator(".assistant-more-examples summary").click();
+        for (const request of info.examples.slice(1)) {
+            const target = [...training, ...demonstrations].find(
+                (row) => row.request === request,
+            )?.expected;
+            assert.ok(target, "Every public example has an independent target");
+            await page
+                .getByRole("button", { name: request, exact: true })
+                .click();
+            assert.equal(
+                await page.locator("#assistant-request").inputValue(),
+                request,
+            );
+            await page
+                .getByRole("button", { name: "اقترح أجزاء البحث", exact: true })
+                .click();
+            await page.waitForSelector(".assistant-proposal", {
+                timeout: 60000,
+            });
+            assert.ok(await page.evaluate(matchesGold, target), request);
+        }
+        await page.setViewportSize({ width: 320, height: 844 });
+        assert.equal(
+            await page.evaluate(
+                () => document.documentElement.scrollWidth > innerWidth,
+            ),
+            false,
+        );
+        await page.setViewportSize({ width: 390, height: 844 });
+        // Restore the first proposal for apply/search/reload checks below.
+        await page.locator("#assistant-request").fill(info.examples[0]);
+        await page
+            .getByRole("button", { name: "اقترح أجزاء البحث", exact: true })
+            .click();
+        await page.waitForSelector(".assistant-proposal", { timeout: 60000 });
         if (process.env.ASSISTANT_SCREENSHOT)
             await page.screenshot({
                 path: process.env.ASSISTANT_SCREENSHOT,
@@ -109,6 +164,28 @@ const base = process.argv[2] || "http://127.0.0.1:8780/quran/";
         );
         assert.equal(restored[0].type, gold.blocks[0].type);
         assert.equal(restored[0].value, gold.blocks[0].value);
+        if (gold.settings) {
+            assert.equal(
+                await page
+                    .locator(
+                        'input[ng-model="searchConfig.searchFromBeginning"]',
+                    )
+                    .isChecked(),
+                gold.settings.searchFromBeginning,
+            );
+            assert.equal(
+                await page
+                    .locator('input[ng-model="searchConfig.searchOnEnd"]')
+                    .isChecked(),
+                gold.settings.searchOnEnd,
+            );
+            assert.equal(
+                await page
+                    .locator('input[ng-model="shouldRemoveLastHarakah"]')
+                    .isChecked(),
+                gold.settings.removeLastHarakah,
+            );
+        }
         const approvalRejected = await page.evaluate(async (info) => {
             const { createPlanner } = await import(
                 new URL(info.client, document.baseURI).href
@@ -166,6 +243,8 @@ const base = process.argv[2] || "http://127.0.0.1:8780/quran/";
             smoke_only: false,
             example: info.examples[0],
             exact_proposal: true,
+            exact_public_examples: info.examples.length,
+            responsive_widths: [320, 390],
             manual_draft_preserved: true,
             explicit_apply_and_search: true,
             saved_link_reload: true,

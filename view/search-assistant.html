@@ -17,13 +17,19 @@
         <form ng-if="['ready','thinking','suggestion','clarify'].includes(assistant.status)" ng-submit="askAssistant()" novalidate>
             <label for="assistant-request">ما البحث الذي تريده؟</label>
             <textarea id="assistant-request" ng-model="assistant.text" ng-change="assistantTextChanged()" ng-trim="false" maxlength="640" rows="3" aria-describedby="assistant-instructions" placeholder="اجمع ٣ كلمات بعد «ولكن»"></textarea>
-            <p id="assistant-instructions" class="field-hint">ضع الكلمات المطلوبة بين «علامتي تنصيص»، واكتب الأعداد بالأرقام مثل ٣ أو 3. هذا الإصدار أنسب لالتقاط الكلمات والاستبعاد وتحديد السورة والآية. لبقية الأجزاء استخدم المحرر اليدوي؛ لا يقدم المساعد تفسيراً أو بحثاً بالمعنى.</p>
-            <div class="assistant-examples"><span>جرّب:</span><button type="button" ng-repeat="example in examples" ng-click="useAssistantExample(example)">{{example}}</button></div>
+            <p id="assistant-instructions" class="field-hint">ضع الكلمات المطلوبة بين «علامتي تنصيص»، واكتب الأعداد بالأرقام مثل ٣ أو 3. يشمل هذا الإصدار أنواع الأجزاء الاثني عشر، من الحروف والحركات إلى فاصل الآية. يمكنك إضافة «في بداية الآية فقط» أو «في نهاية الآية فقط» أو «جمع النتائج دون الحركة الأخيرة» خارج النص المقتبس. إذا لم يفهم الطلب، عدّله أو استخدم المحرر اليدوي؛ لا يقدم المساعد تفسيراً أو بحثاً بالمعنى.</p>
+            <div class="assistant-examples"><span>جرّب:</span><button type="button" ng-repeat="example in examples.slice(0, 3)" ng-click="useAssistantExample(example)">{{example}}</button></div>
+            <details ng-if="examples.length > 3" class="assistant-more-examples"><summary>أمثلة لبقية أجزاء البحث ({{examples.length - 3}})</summary><div class="assistant-examples"><button type="button" ng-repeat="example in examples.slice(3)" ng-click="useAssistantExample(example)">{{example}}</button></div></details>
             <div class="assistant-actions"><button type="submit" ng-disabled="!assistant.text.trim() || assistant.status === 'thinking'">{{assistant.status === 'thinking' ? 'جار فهم الطلب…' : 'اقترح أجزاء البحث'}}</button><button type="button" ng-click="cancelAssistant()">إيقاف المساعد</button></div>
         </form>
         <p class="assistant-status" role="status" aria-live="polite">{{assistant.message}}</p>
         <section ng-if="assistant.proposal" class="assistant-proposal" aria-label="معاينة اقتراح المساعد">
             <h3>الأجزاء المقترحة</h3>
+            <ul class="assistant-settings" ng-if="assistant.proposal.settings.searchFromBeginning || assistant.proposal.settings.searchOnEnd || assistant.proposal.settings.removeLastHarakah">
+                <li ng-if="assistant.proposal.settings.searchFromBeginning">في بداية الآية فقط</li>
+                <li ng-if="assistant.proposal.settings.searchOnEnd">في نهاية الآية فقط</li>
+                <li ng-if="assistant.proposal.settings.removeLastHarakah">جمع النتائج دون الحركة الأخيرة</li>
+            </ul>
             <ol><li ng-repeat="block in assistant.proposal.blocks track by $index">{{assistantPreview(block)}}</li></ol>
             <p ng-if="assistant.proposal.reference.surah">السورة {{assistant.proposal.reference.surah}} · الآية {{assistant.proposal.reference.ayah}}</p>
             <p class="field-hint">سيستبدل هذا أجزاء المحرر الحالية. تستطيع التراجع بعد الإضافة، ولن يبدأ البحث تلقائياً.</p>

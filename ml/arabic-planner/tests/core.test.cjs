@@ -35,6 +35,11 @@ function signature(plan) {
               intent: plan.intent,
               blocks: builder.normalise(plan.blocks),
               reference: plan.reference,
+              settings: plan.settings || {
+                  searchFromBeginning: false,
+                  searchOnEnd: false,
+                  removeLastHarakah: false,
+              },
           })
         : { status: "clarify" };
 }
@@ -62,6 +67,12 @@ test("a confident wrong intent cannot drop explicit exclusions, captures or ayah
         ["ابحث عن «نور» ثم «هدى» متجاورتين", "unknown_word"],
         ["ابحث عن «ب» ثم 3 حروف مجهولة ثم «ر»", "between_exact"],
         ["ابحث عن «نور» ثم كلمة واحدة غير محددة ثم «هدى»", "between_adjacent"],
+        ["اجمع الكلمات السابقة لـ الوقف اللازم بعدد 2", "symbol_after"],
+        [
+            "أريد جزء جمع كلمات في هذا الموضع بعدد 2 ثم النص «نور»",
+            "context_after",
+        ],
+        ["ابحث عن «نور» ثم «هدى» بينهما 3 كلمات بالضبط", "capture_between"],
     ]) {
         assert.equal(
             core.decide(text, scores(id), policy, catalog, refs, builder)
@@ -70,7 +81,7 @@ test("a confident wrong intent cannot drop explicit exclusions, captures or ayah
         );
     }
 });
-test("all 4096 seed targets agree with the production compiler and assembler", () => {
+test("all comprehensive targets agree with the production compiler, settings and assembler", () => {
     let count = 0;
     const requests = new Set(),
         families = new Map(),
@@ -108,7 +119,10 @@ test("all 4096 seed targets agree with the production compiler and assembler", (
             assert.equal(prepared, row.model_input);
         }
     }
-    assert.equal(count, 4096);
+    assert.equal(
+        count,
+        Object.values(manifest.counts).reduce((a, b) => a + b, 0),
+    );
 });
 test("masking preserves the exact quoted Quran text and Arabic/Western digit counts", () => {
     const parsed = core.extract("اجمع ٣ كلمات بعد «عَلِمَ»");
@@ -238,17 +252,131 @@ test("named marks and Quranic symbols are closed enumerations", () => {
         "clarify",
     );
     assert.equal(
-        assemble("ابحث عن أي حرف مع فتحة", "any_letter_mark").blocks[0].mark,
+        assemble("ابحث عن أي حرف مع فتحة", "letter_any").blocks[0].mark,
         "َ",
     );
     assert.equal(
-        assemble("ابحث عن الحرف «ن» مع شدة", "letter_shadda").blocks[0].shadda,
+        assemble("ابحث عن الحرف «ن» مع شدة", "letter_specific").blocks[0]
+            .shadda,
         true,
     );
     assert.equal(
-        assemble("ابحث عن أي حرف مع فتحة وكسرة", "any_letter_mark").status,
+        assemble("ابحث عن أي حرف مع فتحة وكسرة", "letter_any").status,
         "clarify",
     );
+});
+test("all twelve component types, global option combinations and template splits are covered", () => {
+    const manifest = JSON.parse(
+            fs.readFileSync(path.join(root, "data/manifest.json")),
+        ),
+        coverage = JSON.parse(
+            fs.readFileSync(path.join(root, "data/coverage.json")),
+        ),
+        inputs = new Map(),
+        types = new Set();
+    assert.equal(Object.keys(coverage.requested_options).length, 15);
+    for (const split of ["train", "validation", "calibration", "test"]) {
+        for (const stats of Object.values(coverage.by_split[split])) {
+            assert.deepEqual(stats.option_masks, [0, 1, 2, 3, 4, 5, 6, 7]);
+            assert.ok(stats.families >= 2);
+        }
+        for (const line of fs
+            .readFileSync(path.join(root, "data", split + ".jsonl"), "utf8")
+            .trim()
+            .split("\n")) {
+            const row = JSON.parse(line);
+            for (const block of row.expected.blocks || [])
+                types.add(block.type);
+            if (row.model_input) {
+                if (inputs.has(row.model_input))
+                    assert.equal(inputs.get(row.model_input), split);
+                inputs.set(row.model_input, split);
+            }
+        }
+    }
+    assert.equal(types.size, 12);
+    assert.ok(
+        Object.values(manifest.counts).reduce((a, b) => a + b, 0) > 50000,
+    );
+});
+test("global options are orthogonal to intent and preserve exact quoted text", () => {
+    for (let bits = 0; bits < 8; bits++) {
+        const flags = [
+            bits & 1 ? "في بداية الآية فقط" : "",
+            bits & 2 ? "في نهاية الآية فقط" : "",
+            bits & 4 ? "جمع النتائج دون الحركة الأخيرة" : "",
+        ].filter(Boolean);
+        const request =
+            "ابحث عن نص «عَلِمَ»" +
+            (flags.length ? "، " + flags.join("، ") : "");
+        const plan = assemble(request, "text_contains");
+        assert.equal(plan.status, "suggestion");
+        assert.equal(plan.blocks[0].value, "عَلِمَ");
+        assert.deepEqual(plan.settings, {
+            searchFromBeginning: !!(bits & 1),
+            searchOnEnd: !!(bits & 2),
+            removeLastHarakah: !!(bits & 4),
+        });
+        assert.equal(core.extract(request).modelInput, "ابحث عن نص «عبارة»");
+    }
+    const literal = assemble(
+        "ابحث عن العبارة الكاملة «في بداية الآية فقط»",
+        "text_phrase",
+    );
+    assert.equal(literal.settings.searchFromBeginning, false);
+    const cross = assemble(
+        "ابحث عن «نور» في آخر الآية ثم «هدى» في الآية التالية",
+        "cross_ayah",
+    );
+    assert.equal(cross.settings.searchOnEnd, false);
+});
+test("letter features include all motions, shadda and optional specific letters", () => {
+    const plan = assemble(
+        "ابحث عن الحرف «ن» مع كسرة ومع شدة والحرف اختياري",
+        "letter_specific",
+    );
+    assert.equal(plan.status, "suggestion");
+    assert.equal(plan.blocks[0].mark, "ِ");
+    assert.equal(plan.blocks[0].shadda, true);
+    assert.equal(plan.blocks[0].letterOptional, true);
+    assert.equal(
+        assemble("ابحث عن أي حرف بأي حركة", "letter_any").blocks[0].mark,
+        "",
+    );
+});
+test("variable alternatives and exclusion matching modes remain grounded", () => {
+    const list = assemble(
+        "أريد أحد هذه الخيارات «الله» أو «نور» أو «هدى»، مطابقة الخيارات كبدايات كلمات",
+        "alternatives",
+    );
+    assert.equal(list.status, "suggestion");
+    assert.equal(list.blocks[0].choices.length, 3);
+    assert.equal(list.blocks[0].matchMode, "starts");
+    const exclusion = assemble(
+        "ابحث عن «علم» واستبعد الكلمات المطابقة التي فيها «ون» أو «ين»، مطابقة الخيارات كنهايات كلمات",
+        "exclude_word",
+    );
+    assert.equal(exclusion.blocks[1].choices.length, 2);
+    assert.equal(exclusion.blocks[1].scope, "word");
+    assert.equal(exclusion.blocks[1].matchMode, "ends");
+    assert.equal(
+        assemble("ابحث عن العلامة ۩", "symbol_only").blocks[0].symbol,
+        "۩",
+    );
+});
+test("numeric constraint fixtures reject invalid values despite a confident intent", () => {
+    const rows = fs
+        .readFileSync(path.join(root, "data/adversarial.jsonl"), "utf8")
+        .trim()
+        .split("\n")
+        .map(JSON.parse);
+    assert.ok(rows.length >= 30);
+    for (const row of rows)
+        assert.equal(
+            assemble(row.request, row.intent).status,
+            "clarify",
+            row.request,
+        );
 });
 test("unsupported, malformed, unquoted, injected or excessive inputs abstain", () => {
     for (const text of [

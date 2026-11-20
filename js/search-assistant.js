@@ -23,7 +23,7 @@ myApp.factory("QuranPlannerService", function ($http, $q, $window) {
                     var info = response.data;
                     if (
                         !info ||
-                        info.version !== 1 ||
+                        ![1, 2].includes(info.version) ||
                         !["experimental", "approved"].includes(info.channel) ||
                         !Number.isSafeInteger(info.bytes) ||
                         info.bytes < 1 ||
@@ -100,7 +100,7 @@ myApp.directive(
                                             text.length <= 640
                                         );
                                     })
-                                    .slice(0, 3);
+                                    .slice(0, 14);
                             state.status = "idle";
                             state.message = "";
                             state.megabytes = Math.ceil(

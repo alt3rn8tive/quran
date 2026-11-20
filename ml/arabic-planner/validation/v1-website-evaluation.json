@@ -1,0 +1,166 @@
+{
+  "inference_engine": "onnxruntime-web-wasm",
+  "browser_scores_sha256": "7fca7d49c37a3b5d6e131eede32c39522cadd546de925d8f6f94f6ac55945c97",
+  "samples": 600,
+  "accepted": 226,
+  "coverage": 0.37666666666666665,
+  "accepted_exact_plan_precision": 1.0,
+  "precision_95_lower": 0.9832864843427096,
+  "ood_samples": 49,
+  "ood_false_accepts": 0,
+  "ood_fpr_95_upper": 0.07269781922049638,
+  "all_reviewed": false,
+  "smoke_only": false,
+  "per_intent": {
+    "text_contains": {
+      "accepted": 0,
+      "precision": 0.0,
+      "precision_95_lower": 0.0
+    },
+    "text_whole": {
+      "accepted": 0,
+      "precision": 0.0,
+      "precision_95_lower": 0.0
+    },
+    "text_starts": {
+      "accepted": 0,
+      "precision": 0.0,
+      "precision_95_lower": 0.0
+    },
+    "text_ends": {
+      "accepted": 0,
+      "precision": 0.0,
+      "precision_95_lower": 0.0
+    },
+    "text_phrase": {
+      "accepted": 0,
+      "precision": 0.0,
+      "precision_95_lower": 0.0
+    },
+    "context_before": {
+      "accepted": 21,
+      "precision": 1.0,
+      "precision_95_lower": 0.8453609810751531
+    },
+    "context_after": {
+      "accepted": 22,
+      "precision": 1.0,
+      "precision_95_lower": 0.8513451253913791
+    },
+    "between_adjacent": {
+      "accepted": 0,
+      "precision": 0.0,
+      "precision_95_lower": 0.0
+    },
+    "between_exact": {
+      "accepted": 0,
+      "precision": 0.0,
+      "precision_95_lower": 0.0
+    },
+    "between_range": {
+      "accepted": 0,
+      "precision": 0.0,
+      "precision_95_lower": 0.0
+    },
+    "between_either": {
+      "accepted": 0,
+      "precision": 0.0,
+      "precision_95_lower": 0.0
+    },
+    "cross_ayah": {
+      "accepted": 0,
+      "precision": 0.0,
+      "precision_95_lower": 0.0
+    },
+    "alternatives": {
+      "accepted": 0,
+      "precision": 0.0,
+      "precision_95_lower": 0.0
+    },
+    "exclude_verse": {
+      "accepted": 22,
+      "precision": 1.0,
+      "precision_95_lower": 0.8513451253913791
+    },
+    "exclude_word": {
+      "accepted": 24,
+      "precision": 1.0,
+      "precision_95_lower": 0.8620237953250198
+    },
+    "letters_exact": {
+      "accepted": 0,
+      "precision": 0.0,
+      "precision_95_lower": 0.0
+    },
+    "letters_range": {
+      "accepted": 0,
+      "precision": 0.0,
+      "precision_95_lower": 0.0
+    },
+    "letter_mark": {
+      "accepted": 0,
+      "precision": 0.0,
+      "precision_95_lower": 0.0
+    },
+    "any_letter_mark": {
+      "accepted": 0,
+      "precision": 0.0,
+      "precision_95_lower": 0.0
+    },
+    "letter_shadda": {
+      "accepted": 0,
+      "precision": 0.0,
+      "precision_95_lower": 0.0
+    },
+    "letter_optional": {
+      "accepted": 0,
+      "precision": 0.0,
+      "precision_95_lower": 0.0
+    },
+    "symbol_only": {
+      "accepted": 0,
+      "precision": 0.0,
+      "precision_95_lower": 0.0
+    },
+    "symbol_before": {
+      "accepted": 22,
+      "precision": 1.0,
+      "precision_95_lower": 0.8513451253913791
+    },
+    "symbol_after": {
+      "accepted": 21,
+      "precision": 1.0,
+      "precision_95_lower": 0.8453609810751531
+    },
+    "capture_between": {
+      "accepted": 24,
+      "precision": 1.0,
+      "precision_95_lower": 0.8620237953250198
+    },
+    "unknown_word": {
+      "accepted": 23,
+      "precision": 1.0,
+      "precision_95_lower": 0.8568833815495732
+    },
+    "unknown_words": {
+      "accepted": 24,
+      "precision": 1.0,
+      "precision_95_lower": 0.8620237953250198
+    },
+    "reference": {
+      "accepted": 23,
+      "precision": 1.0,
+      "precision_95_lower": 0.8568833815495732
+    }
+  },
+  "artifact_fingerprint": "9fffb024e37432ca58c5e4d844859007d6c4a6c0e9fad0de98a8c109929321d3",
+  "dataset_sha256": "8eb2b40ef2f28929200a9fcdd61f1d04f8d0dd6d76e5f8c04d446a476c43940b",
+  "approved": false,
+  "in_scope_coverage": 0.4101633393829401,
+  "statistical_gates_pass": false,
+  "examples": [
+    "\u0627\u062c\u0645\u0639 \u0663 \u0643\u0644\u0645\u0627\u062a \u0628\u0639\u062f \u00ab\u0647\u062f\u0649\u00bb",
+    "\u0627\u062c\u0645\u0639 \u0663 \u0643\u0644\u0645\u0627\u062a \u0642\u0628\u0644 \"\u0627\u0644\u0623\u0631\u0636\"",
+    "\u0627\u0628\u062d\u062b \u0639\u0646 \u00ab\u0647\u062f\u0649\u00bb \u0648\u0627\u0633\u062a\u0628\u0639\u062f \u0627\u0644\u0622\u064a\u0627\u062a \u0627\u0644\u062a\u064a \u062a\u062d\u062a\u0648\u064a \u0627\u0644\u0643\u0644\u0645\u0629 \u00ab\u0627\u0644\u0646\u0627\u0633\u00bb"
+  ]
+}

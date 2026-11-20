@@ -31,6 +31,11 @@ function signature(plan) {
                   intent: plan.intent,
                   blocks: builder.normalise(plan.blocks),
                   reference: plan.reference || { ayah: null, surah: null },
+                  settings: plan.settings || {
+                      searchFromBeginning: false,
+                      searchOnEnd: false,
+                      removeLastHarakah: false,
+                  },
               }),
           )
         : JSON.stringify({ status: "clarify" });

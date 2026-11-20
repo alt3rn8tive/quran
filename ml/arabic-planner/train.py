@@ -47,6 +47,8 @@ def main():
     p.add_argument("--seed", type=int, default=42)
     p.add_argument("--max-steps", type=int)
     p.add_argument("--smoke", action="store_true")
+    p.add_argument("--initialize-from", type=Path)
+    p.add_argument("--deduplicate-inputs", action="store_true")
     p.add_argument("--device", default="cuda" if torch.cuda.is_available() else "cpu")
     args = p.parse_args()
     random.seed(args.seed)
@@ -66,7 +68,64 @@ def main():
         row["family_id"] for row in validation
     ):
         raise ValueError("Training/validation template-family leakage.")
-    if args.smoke:
+    initialization = None
+    if args.initialize_from and not args.smoke:
+        source_report = json.loads(
+            (args.initialize_from / "training-report.json").read_text()
+        )
+        if (
+            source_report.get("smoke_only")
+            or source_report.get("backbone") != spec["backbone"]
+            or source_report.get("revision") != spec["revision"]
+        ):
+            raise ValueError(
+                "Initialization must be the pinned fine-tuned Arabic backbone."
+            )
+        tokenizer = AutoTokenizer.from_pretrained(args.initialize_from, use_fast=True)
+        model = AutoModelForSequenceClassification.from_pretrained(
+            args.initialize_from, attn_implementation="eager"
+        )
+        if len(model.bert.encoder.layer) != len(spec["retained_encoder_layers"]):
+            raise ValueError(
+                "Initialization encoder size differs from the selected Arabic candidate."
+            )
+        old_labels = model.config.id2label
+        old_head = model.classifier
+        model.classifier = nn.Linear(old_head.in_features, len(labels))
+        nn.init.normal_(
+            model.classifier.weight, mean=0.0, std=model.config.initializer_range
+        )
+        nn.init.zeros_(model.classifier.bias)
+        aliases = {"letter_specific": "letter_mark", "letter_any": "any_letter_mark"}
+        with torch.no_grad():
+            for label, index in label2id.items():
+                old = next(
+                    (
+                        key
+                        for key, value in old_labels.items()
+                        if value == aliases.get(label, label)
+                    ),
+                    None,
+                )
+                if old is not None:
+                    model.classifier.weight[index].copy_(old_head.weight[old])
+                    model.classifier.bias[index].copy_(old_head.bias[old])
+        model.num_labels = len(labels)
+        model.config.num_labels = len(labels)
+        model.config.id2label = dict(enumerate(labels))
+        model.config.label2id = label2id
+        initialization = {
+            "source_training_report_sha256": hashlib.sha256(
+                (args.initialize_from / "training-report.json").read_bytes()
+            ).hexdigest(),
+            "source_weights_sha256": hashlib.sha256(
+                (args.initialize_from / "model.safetensors").read_bytes()
+            ).hexdigest(),
+            "source_training_requests_sha256": source_report.get(
+                "training_requests_sha256", []
+            ),
+        }
+    elif args.smoke:
         # This checks plumbing only. It is intentionally not a pretrained Arabic model.
         # Use the real pinned Arabic tokenizer, so browser parity tests cover its normalization.
         tokenizer = AutoTokenizer.from_pretrained(
@@ -110,6 +169,16 @@ def main():
     validation, skipped_validation = prepare_inputs(
         tokenizer, validation, spec["max_tokens"]
     )
+    raw_train_count = len(train)
+    if args.deduplicate_inputs:
+        unique = {}
+        for row in train:
+            key = row["model_input"]
+            if key in unique and unique[key]["intent"] != row["intent"]:
+                raise ValueError("Conflicting intent labels for a masked input.")
+            unique.setdefault(key, row)
+        train = list(unique.values())
+        validation = list({row["model_input"]: row for row in validation}.values())
     if not train or not validation:
         raise ValueError("No usable training/validation examples.")
     device = torch.device(args.device)
@@ -192,6 +261,8 @@ def main():
         "smoke_only": args.smoke,
         "training_steps": step,
         "train_examples": len(train),
+        "usable_train_rows_before_deduplication": raw_train_count,
+        "initialization": initialization,
         "validation_examples": len(validation),
         "skipped_train": skipped_train,
         "skipped_validation": skipped_validation,
@@ -202,7 +273,10 @@ def main():
             ).hexdigest()
             for name in ["train", "validation"]
         },
-        "training_requests_sha256": [
+        "training_requests_sha256": (
+            initialization["source_training_requests_sha256"] if initialization else []
+        )
+        + [
             hashlib.sha256(row["request"].encode()).hexdigest()
             for row in train + validation
         ],

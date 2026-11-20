@@ -1,0 +1,8 @@
+{
+  "browser/planner-core.js": "667566a647349a2d4ddb145e39dd4178c30e3d717736a0dcad0abd2d872d5668",
+  "browser/runner.js": "c192f0294488e87c38ddd812fbbb61444ff178dd27bc8f86e9932226fa5ecbba",
+  "browser/client.js": "5141ac6f74f9423e39a59299925072bb6c5200fa6f1ec7e76784459afcc6b41b",
+  "browser/planner-worker.js": "6c34ce5097ca29ea3aed1cf76314087c27f2a5cee78b292151592f11cfc9f93a",
+  "browser/build.cjs": "b6b8058f6544834d6496eb087ac18d07cab1b59255041dbe295dad368a1f6338",
+  "browser/package-lock.json": "03571c954b5150102ad2766849e511cac5f7e6f56e1d491b36d499e44ee98a00"
+}

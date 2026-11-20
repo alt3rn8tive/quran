@@ -1,6 +1,6 @@
 """Export BERT classification to int8 ONNX and check dynamic-shape inference parity."""
 
-import argparse, hashlib, json, shutil
+import argparse, hashlib, json, shutil, subprocess
 from pathlib import Path
 import numpy as np
 import torch
@@ -80,7 +80,21 @@ def main():
     maximum_probability_difference = 0.0
     maximum_suggestion_probability_difference = 0.0
     agreements = 0
-    samples = ["ابحث عن «عبارة»", "اجمع رقم كلمات بعد «عبارة»", "أريد تفسير النص"]
+    raw_probes = [
+        "ابحث عن نص «الحمد»، في بداية الآية فقط",
+        "اجمع ٣ كلمات بعد «ولكن»، جمع النتائج دون الحركة الأخيرة",
+        "ابحث عن العلامة القرآنية ۩",
+    ]
+    samples = json.loads(
+        subprocess.run(
+            ["node", str(ROOT / "preprocess.cjs")],
+            input=json.dumps(raw_probes, ensure_ascii=False),
+            text=True,
+            capture_output=True,
+            check=True,
+        ).stdout
+    )
+    samples = [sample for sample in samples if sample]
     # Probe every intent's training template as export plumbing, separately from
     # held-out accuracy. Raw logits have an arbitrary scale; compare probabilities.
     seen = set()

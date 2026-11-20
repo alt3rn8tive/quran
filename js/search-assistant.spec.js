@@ -1,3 +1,51 @@
+describe("Assistant registry protocol", function () {
+    beforeEach(angular.mock.module("myApp"));
+    it(
+        "accepts both legacy and settings-aware registry versions",
+        angular.mock.inject(function (QuranPlannerService, $httpBackend) {
+            $httpBackend.whenGET("view/search.html").respond(200, "");
+            for (var version of [1, 2]) {
+                var result = null,
+                    info = {
+                        version: version,
+                        channel: "experimental",
+                        model: "models/test/",
+                        client: "models/runtime/test/client.js",
+                        bytes: 1024,
+                    };
+                $httpBackend
+                    .expectGET(/^models\/planner.json\?v=/)
+                    .respond(200, info);
+                QuranPlannerService.describe().then(function (value) {
+                    result = value;
+                });
+                $httpBackend.flush();
+                expect(result.version).toBe(version);
+            }
+        }),
+    );
+    it(
+        "rejects an unknown registry before downloading a model",
+        angular.mock.inject(function (QuranPlannerService, $httpBackend) {
+            $httpBackend.whenGET("view/search.html").respond(200, "");
+            var rejected = false;
+            $httpBackend
+                .expectGET(/^models\/planner.json\?v=/)
+                .respond(200, {
+                    version: 99,
+                    channel: "experimental",
+                    model: "models/test/",
+                    client: "models/runtime/test/client.js",
+                    bytes: 1024,
+                });
+            QuranPlannerService.describe().catch(function () {
+                rejected = true;
+            });
+            $httpBackend.flush();
+            expect(rejected).toBe(true);
+        }),
+    );
+});
 describe("Arabic assistant panel", function () {
     var root,
         compile,
@@ -191,6 +239,7 @@ describe("Applying an assistant proposal to the existing builder", function () {
                 controller = $controller("AyatSearchController", {
                     $scope: scope,
                 });
+                root.$digest();
             },
         ),
     );
@@ -271,5 +320,104 @@ describe("Applying an assistant proposal to the existing builder", function () {
         expect(saved.ayah).toBe(2);
         expect(JSON.parse(saved.qb)[1].type).toBe("ayahBreak");
         expect(location.search().q).toMatch(/^v1\./);
+    });
+    it("keeps all three global options through apply, save and undo", function () {
+        scope.searchConfig.searchFromBeginning = true;
+        scope.searchConfig.searchOnEnd = true;
+        scope.shouldRemoveLastHarakah = true;
+        for (var bits = 0; bits < 8; bits++) {
+            var candidate = plan([QuranQueryBuilder.create("text", "الحمد")]);
+            candidate.settings = {
+                searchFromBeginning: !!(bits & 1),
+                searchOnEnd: !!(bits & 2),
+                removeLastHarakah: !!(bits & 4),
+            };
+            expect(scope.applyAssistantProposal(candidate)).toBe(true);
+            expect(scope.searchConfig.searchFromBeginning).toBe(
+                candidate.settings.searchFromBeginning,
+            );
+            expect(scope.searchConfig.searchOnEnd).toBe(
+                candidate.settings.searchOnEnd,
+            );
+            expect(scope.shouldRemoveLastHarakah).toBe(
+                candidate.settings.removeLastHarakah,
+            );
+            scope.searchButtonClicked();
+            var saved = QuranSearchLink.parameters(location.search());
+            expect(saved.search_only_from_beginning).toBe(
+                candidate.settings.searchFromBeginning,
+            );
+            expect(saved.search_only_on_end).toBe(
+                candidate.settings.searchOnEnd,
+            );
+            expect(saved.remove_harakah).toBe(
+                candidate.settings.removeLastHarakah,
+            );
+        }
+        var clear = plan([QuranQueryBuilder.create("text", "نور")]);
+        clear.settings = {
+            searchFromBeginning: false,
+            searchOnEnd: false,
+            removeLastHarakah: false,
+        };
+        scope.applyAssistantProposal(clear);
+        scope.undoAssistantProposal();
+        expect(scope.searchConfig.searchFromBeginning).toBe(true);
+        expect(scope.searchConfig.searchOnEnd).toBe(true);
+        expect(scope.shouldRemoveLastHarakah).toBe(true);
+    });
+    it("rejects malformed global settings without replacing the draft", function () {
+        var before = angular.copy(scope.queryBlocks),
+            candidate = plan([QuranQueryBuilder.create("text", "نور")]);
+        candidate.settings = {
+            searchFromBeginning: "true",
+            searchOnEnd: false,
+            removeLastHarakah: false,
+        };
+        expect(scope.applyAssistantProposal(candidate)).toBe(false);
+        expect(scope.queryBlocks).toEqual(before);
+    });
+    it("matches the selected beginning and ending of a real ayah", function () {
+        for (var end of [false, true]) {
+            var candidate = plan(
+                [QuranQueryBuilder.create("text", end ? "العالمين" : "الحمد")],
+                { surah: 1, ayah: 2 },
+            );
+            candidate.settings = {
+                searchFromBeginning: !end,
+                searchOnEnd: end,
+                removeLastHarakah: false,
+            };
+            scope.applyAssistantProposal(candidate);
+            scope.searchButtonClicked();
+            root.$digest();
+            expect(scope.foundAyat.length).toBe(1);
+            expect(scope.foundAyat[0].verse_id).toBe(2);
+        }
+    });
+    it("groups without the last harakah while preserving occurrence counts", function () {
+        function run(remove) {
+            var candidate = plan([QuranQueryBuilder.create("text", "علم")]);
+            candidate.settings = {
+                searchFromBeginning: false,
+                searchOnEnd: false,
+                removeLastHarakah: remove,
+            };
+            scope.applyAssistantProposal(candidate);
+            scope.searchButtonClicked();
+            root.$digest();
+            return {
+                groups: Object.keys(scope.countedAyahAttributes.matched).length,
+                total: Object.values(
+                    scope.countedAyahAttributes.matched,
+                ).reduce(function (a, b) {
+                    return a + b;
+                }, 0),
+            };
+        }
+        var original = run(false),
+            merged = run(true);
+        expect(merged.groups).toBeLessThan(original.groups);
+        expect(merged.total).toBe(original.total);
     });
 });

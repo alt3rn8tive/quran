@@ -1,17 +1,22 @@
 {
   "real_pretrained_candidate": true,
   "smoke_only": false,
-  "example": "اجمع ٣ كلمات بعد «هدى»",
+  "example": "ابحث عن نص «الحمد»، في بداية الآية فقط",
   "exact_proposal": true,
+  "exact_public_examples": 14,
+  "responsive_widths": [
+    320,
+    390
+  ],
   "manual_draft_preserved": true,
   "explicit_apply_and_search": true,
   "saved_link_reload": true,
   "default_production_gate_intact": true,
   "cancellation": true,
   "same_origin_model_requests": true,
-  "cold_load_ms": 6081,
+  "cold_load_ms": 4462,
   "viewport": 390,
   "physical_mobile_verified": false,
-  "artifact_fingerprint": "9fffb024e37432ca58c5e4d844859007d6c4a6c0e9fad0de98a8c109929321d3",
-  "saved_search_hash": "!/search?q=v1.eyJzIjoi2YfYr9mJICguIC4gLikgIiwicWIiOiJbe1widHlwZVwiOlwiY29udGV4dFwiLFwidmFsdWVcIjpcItmH2K_ZiVwiLFwiY291bnRcIjozfV0iLCJyZW1vdmVfaGFyYWthaCI6ZmFsc2UsInNlYXJjaF9vbmx5X2Zyb21fYmVnaW5uaW5nIjpmYWxzZSwic2VhcmNoX29ubHlfb25fZW5kIjpmYWxzZSwiZXhjbHVkZV9wYXJ0X29mX3dvcmRzIjpmYWxzZX0#main-container"
+  "artifact_fingerprint": "fb74065717114a2140e630635f0356116c152a939833ea22bdae6222fb78a2d9",
+  "saved_link": "http://127.0.0.1:8780/quran/#!/search?q=v1.eyJzIjoi2KfZhNit2YXYryIsInFiIjoiW3tcInR5cGVcIjpcInRleHRcIixcInZhbHVlXCI6XCLYp9mE2K3ZhdivXCJ9XSIsInJlbW92ZV9oYXJha2FoIjpmYWxzZSwic2VhcmNoX29ubHlfZnJvbV9iZWdpbm5pbmciOnRydWUsInNlYXJjaF9vbmx5X29uX2VuZCI6ZmFsc2UsImV4Y2x1ZGVfcGFydF9vZl93b3JkcyI6ZmFsc2V9#main-container"
 }

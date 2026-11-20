@@ -726,6 +726,7 @@ myApp.controller('AyatSearchController', function ($scope, $window, $http, $rout
 
     $scope.suwar = all_suwar;
     $scope.searchQueryRegex = '';
+    $scope.foundAyat = [];
 
     $scope.FATHA = FATHA
     $scope.DAMMA = DAMMA
@@ -1138,6 +1139,8 @@ myApp.controller('AyatSearchController', function ($scope, $window, $http, $rout
     $scope.applyAssistantProposal = function (proposal) {
         if (!proposal || proposal.status !== 'suggestion' || !Array.isArray(proposal.blocks) || !proposal.blocks.length || proposal.blocks.length > 30) return false;
         var compiled = QuranQueryBuilder.compile(proposal.blocks), reference = proposal.reference || {surah:null, ayah:null};
+        var settings=proposal.settings||{searchFromBeginning:false,searchOnEnd:false,removeLastHarakah:false};
+        if(['searchFromBeginning','searchOnEnd','removeLastHarakah'].some(function(key){return typeof settings[key]!=='boolean';}))return false;
         if (compiled.error) return false;
         if (reference.surah !== null || reference.ayah !== null) {
             if (!Number.isInteger(reference.surah) || !Number.isInteger(reference.ayah) || !all_ayat.some(function (ayah) { return ayah.sura_id === reference.surah && ayah.verse_id === reference.ayah; })) return false;
@@ -1146,8 +1149,8 @@ myApp.controller('AyatSearchController', function ($scope, $window, $http, $rout
         $scope.queryBlocks = QuranQueryBuilder.normalise(angular.copy(proposal.blocks));
         $scope.queryBlocks.forEach(function (block) { block.id = ++nextBlockId; });
         $scope.reference = angular.copy(reference);
-        $scope.searchConfig = {searchFromBeginning:false, searchOnEnd:false, excludePartOfWords:false, wordMatch:'contains'};
-        $scope.shouldRemoveLastHarakah = false;
+        $scope.searchConfig = {searchFromBeginning:settings.searchFromBeginning, searchOnEnd:settings.searchOnEnd, excludePartOfWords:false, wordMatch:'contains'};
+        $scope.shouldRemoveLastHarakah = settings.removeLastHarakah;
         $scope.savedQueryOnly = false;
         $scope.builderChanged();
         $scope.assistantUndo = previous;
