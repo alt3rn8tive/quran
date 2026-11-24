@@ -1,0 +1,135 @@
+<div ng-include="'view/header.html'"></div>
+<main class="questions-page" dir="rtl">
+    <header class="questions-heading">
+        <h1>أسئلة من القرآن</h1>
+        <p>اسأل بالعربية واقرأ الآيات في سياقها، أو اختر سؤالاً من قائمة الموضوعات.</p>
+    </header>
+
+    <div class="questions-layout">
+        <div class="questions-main">
+            <section class="questions-composer" aria-labelledby="questions-input-label">
+                <form name="questionForm" ng-submit="vm.ask()">
+                    <label id="questions-input-label" for="questions-input">ما سؤالك؟</label>
+                    <div class="questions-input-row">
+                        <input id="questions-input" type="text" ng-model="vm.input"
+                               maxlength="320" placeholder="كيف أدخل الجنة؟"
+                               autocomplete="off" required>
+                        <button type="submit" class="questions-primary"
+                                ng-disabled="!vm.ready || questionForm.$invalid">ابحث عن إجابة</button>
+                    </div>
+                </form>
+                <div class="questions-examples" ng-if="vm.examples.length">
+                    <span>أسئلة مقترحة</span>
+                    <button ng-repeat="topic in vm.examples track by topic.id" type="button"
+                            ng-click="vm.choose(topic)" ng-bind="topic.question"></button>
+                </div>
+                <p class="questions-state" role="status" ng-if="!vm.ready && !vm.error">يجري فتح فهرس الأسئلة…</p>
+                <div class="questions-catalog-error" ng-if="vm.error">
+                    <p class="questions-state questions-error" role="alert" ng-bind="vm.error"></p>
+                    <button type="button" ng-click="vm.loadCatalog()">إعادة تحميل الأسئلة</button>
+                </div>
+            </section>
+
+            <div class="questions-response" id="questions-response" role="region" aria-label="نتائج السؤال"
+                 tabindex="-1" ng-if="vm.submitted">
+                <section class="questions-answer" ng-if="vm.answer" aria-labelledby="questions-answer-title">
+                    <header class="questions-answer-header">
+                        <span class="questions-kicker">إجابة من الآيات</span>
+                        <h2 id="questions-answer-title" ng-bind="vm.answer.question"></h2>
+                    </header>
+                    <article class="questions-point" ng-repeat="point in vm.answer.points track by $index">
+                        <h3 ng-bind="point.text"></h3>
+                        <figure class="questions-ayah" ng-repeat="verse in point.verses track by verse.ref">
+                            <blockquote ng-bind="verse.text"></blockquote>
+                            <figcaption>
+                                <a ng-href="{{verse.href}}" aria-label="قراءة {{verse.label}} في سياق السورة">
+                                    <span ng-bind="verse.label"></span>
+                                    <span aria-hidden="true">←</span>
+                                </a>
+                            </figcaption>
+                        </figure>
+                    </article>
+                </section>
+
+                <div class="questions-examples" ng-if="vm.relatedTopics.length">
+                    <span>أسئلة قريبة من سؤالك</span>
+                    <button ng-repeat="topic in vm.relatedTopics track by topic.id" type="button"
+                            ng-click="vm.choose(topic)" ng-bind="topic.question"></button>
+                </div>
+
+                <section class="questions-semantic" ng-if="vm.canSearchSemantically()"
+                         aria-labelledby="questions-semantic-title">
+                    <div>
+                        <h2 id="questions-semantic-title">ابحث بحسب المعنى</h2>
+                        <p id="questions-semantic-info" ng-if="vm.retrieval.status !== 'ready'">
+                            يمكن للمساعد اقتراح آيات ذات صلة بالمعنى. يعمل في متصفحك، ويحتاج إلى تنزيل نحو
+                            {{vm.retrieval.megabytes}} ميغابايت عند الاستخدام الأول.
+                        </p>
+                        <p id="questions-semantic-info" ng-if="vm.retrieval.status === 'ready'">
+                            رتّب الآيات بحسب صلتها بالسؤال داخل متصفحك.
+                        </p>
+                    </div>
+                    <div class="questions-semantic-actions">
+                        <button type="button" ng-click="vm.searchSemantically()" aria-describedby="questions-semantic-info"
+                                ng-if="vm.retrieval.status !== 'loading' && vm.retrieval.status !== 'searching'">
+                            {{vm.retrieval.status === 'ready' ? 'ترتيب الآيات' : 'نزّل النموذج وابحث'}}
+                        </button>
+                        <button type="button" ng-click="vm.cancelSemantic()"
+                                ng-if="vm.retrieval.status === 'loading' || vm.retrieval.status === 'searching'">إلغاء</button>
+                    </div>
+                    <progress ng-if="vm.retrieval.status === 'loading'" max="100"
+                              ng-attr-value="{{vm.retrieval.progress == null ? undefined : vm.retrieval.progress}}"
+                              aria-label="تنزيل نموذج البحث بحسب المعنى"></progress>
+                    <p class="questions-semantic-status" role="status" ng-if="vm.retrieval.status === 'searching'">
+                        يجري ترتيب الآيات بحسب صلتها بالسؤال…
+                    </p>
+                    <p class="questions-semantic-status" role="status" ng-if="vm.retrieval.message" ng-bind="vm.retrieval.message"></p>
+                </section>
+
+                <section class="questions-related" ng-if="!vm.answer" aria-labelledby="questions-related-title">
+                    <header class="questions-answer-header">
+                        <h2 id="questions-related-title" ng-bind="vm.resultTitle"></h2>
+                        <p class="questions-submitted" ng-bind="vm.submitted"></p>
+                        <button ng-if="vm.canSwitchResults" type="button" ng-click="vm.switchResults()">
+                            {{vm.showingSemantic ? 'عرض مطابقات الكلمات' : 'عرض الآيات المقترحة'}}
+                        </button>
+                    </header>
+                    <p class="questions-state" role="status" ng-if="vm.reference && !vm.results.length">
+                        لم نجد آية بهذا الرقم. راجع رقم السورة والآية.
+                    </p>
+                    <p class="questions-state" role="status"
+                       ng-if="!vm.reference && !vm.results.length && vm.retrieval.status !== 'searching' && vm.retrieval.status !== 'loading'">
+                        لم نجد آيات مرتبطة بوضوح. جرّب صياغة أقصر أو اذكر كلمة تعرفها من الآية.
+                    </p>
+                    <figure class="questions-ayah" ng-repeat="verse in vm.results track by verse.ref">
+                        <blockquote ng-bind="verse.text"></blockquote>
+                        <figcaption>
+                            <a ng-href="{{verse.href}}" aria-label="قراءة {{verse.label}} في سياق السورة">
+                                <span ng-bind="verse.label"></span>
+                                <span aria-hidden="true">←</span>
+                            </a>
+                        </figcaption>
+                    </figure>
+                    <button class="questions-more" ng-if="vm.canShowMore" type="button" ng-click="vm.more()">
+                        عرض مزيد من الآيات
+                    </button>
+                </section>
+            </div>
+        </div>
+
+        <aside class="questions-catalog" ng-if="vm.topics.length" aria-labelledby="questions-catalog-title">
+            <h2 id="questions-catalog-title">تصفّح الموضوعات</h2>
+            <label for="questions-topic-filter">تصفية القائمة</label>
+            <input id="questions-topic-filter" type="text" ng-model="vm.topicFilter" maxlength="100"
+                   placeholder="مثل الرحمة أو الصبر" autocomplete="off">
+            <ul class="questions-topic-list">
+                <li ng-repeat="topic in vm.topics | filter:vm.matchesTopic as visibleTopics track by topic.id">
+                    <button type="button" ng-click="vm.choose(topic)"
+                            ng-class="{'questions-topic-active': vm.answer.question === topic.question}"
+                            ng-bind="topic.question"></button>
+                </li>
+            </ul>
+            <p class="questions-state" role="status" ng-if="!visibleTopics.length">لا يوجد موضوع بهذا النص.</p>
+        </aside>
+    </div>
+</main>

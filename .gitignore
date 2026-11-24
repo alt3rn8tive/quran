@@ -7,3 +7,4 @@ ml/arabic-planner/**/__pycache__/
 ml/arabic-planner/**/*.onnx
 ml/arabic-planner/**/*.safetensors
 ml/arabic-planner/**/*.bin
+ml/quran-questions/__pycache__/

@@ -1,0 +1,56 @@
+{
+  "version": 1,
+  "count": 6236,
+  "dimensions": 384,
+  "worker": "worker.js",
+  "quranSourceSha256": "5102aafecedd7d992065bb21e4591a561ff83c240b4b554e27d925736d66e56d",
+  "totalBytes": 56685560,
+  "runtimeBytes": 22511337,
+  "modelRevision": "761b726dd34fb83930e26aab4e9ac3899aa1fa78",
+  "files": {
+    "LICENSE-MIT.txt": {
+      "bytes": 1083,
+      "sha256": "b5cb7ff7859e7d282d98fc43ab081b0dda5dc659dc3385cf65740c759a7e6a6c"
+    },
+    "MODEL-NOTICE.md": {
+      "bytes": 828,
+      "sha256": "5687bab9d5816c769a46179317f36101b170b71e970d6ccef6fdcd0aa2f8a945"
+    },
+    "benchmark-report.json": {
+      "bytes": 9226,
+      "sha256": "a008f001e4bd070d8ab5ba6177dbe73f6614a8bea507cf70a78e654c5c66e339"
+    },
+    "config.json": {
+      "bytes": 605,
+      "sha256": "e21ff3c2b53f9fb7f4e23fa1034bfbcb7c2cfbcc932007125e4e81a290b5a958"
+    },
+    "onnx/model_quantized.onnx": {
+      "bytes": 28405781,
+      "sha256": "f87d87851085b6139b5e4212f74c5fcc6fadd9e44d2fd9cc63d66648b49bb2b0"
+    },
+    "refs.json": {
+      "bytes": 54850,
+      "sha256": "09b1506af755c2dc82f4a824f7d4124ae84abb36469599d22e825fdbae258150"
+    },
+    "special_tokens_map.json": {
+      "bytes": 167,
+      "sha256": "d05497f1da52c5e09554c0cd874037a083e1dc1b9cfd48034d1c717f1afc07a7"
+    },
+    "tokenizer.json": {
+      "bytes": 905080,
+      "sha256": "649a2216762313778a557d56c7885d5c2b034b3bcfa3eeb5dd8f0b529652c024"
+    },
+    "tokenizer_config.json": {
+      "bytes": 443,
+      "sha256": "a1d6bc8734a6f635dc158508bef000f8e2e5a759c7d92f984b2c86e5ff53425b"
+    },
+    "vectors.i16": {
+      "bytes": 4789248,
+      "sha256": "7dbf114c5e955305c3dab591a5b24b31de5e51d56aa701c3f7058fedd546f839"
+    },
+    "worker.js": {
+      "bytes": 6912,
+      "sha256": "9b1821dc533ebee0d4e9233375e203dcc20a17e2764155f274fc21545a84d9ab"
+    }
+  }
+}

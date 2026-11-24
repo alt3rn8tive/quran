@@ -3,6 +3,12 @@ const fs = require('node:fs');
 const crypto = require('node:crypto');
 const files = ['style.css', ...fs.readdirSync('js').filter(f => f.endsWith('.js') && !f.endsWith('.spec.js')).map(f => 'js/' + f), ...fs.readdirSync('view').filter(f => f.endsWith('.html')).map(f => 'view/' + f)].sort();
 if (fs.existsSync('models/planner.json')) files.push('models/planner.json');
+const questionsIndex = 'models/quran-questions-e5-v1/manifest.json';
+const corpusHash = crypto.createHash('sha256').update(fs.readFileSync('js/data.js')).digest('hex');
+if (JSON.parse(fs.readFileSync(questionsIndex)).quranSourceSha256 !== corpusHash) {
+    throw new Error('The questions index uses a different Quran corpus. Rebuild it with ml/quran-questions/build_index.py.');
+}
+files.push('data/quran-questions.json', questionsIndex);
 const digest = crypto.createHash('sha256');
 for (const file of files) { digest.update(file); digest.update(fs.readFileSync(file)); }
 // Include the document itself, neutralizing only generated release tokens.
