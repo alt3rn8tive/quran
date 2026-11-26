@@ -27,6 +27,8 @@ module.exports = function(config) {
       'js/app.js',
       'js/search-library.js',
       'js/search-assistant.js',
+      'js/quran-question-forms.js',
+      'js/quran-extractive.js',
       'js/quran-questions.js',
       'js/surah-statistics.js',
       'js/statistics-charts.js',
@@ -36,6 +38,7 @@ module.exports = function(config) {
       'js/search-library.spec.js',
       'js/search-assistant.spec.js',
       'js/quran-questions.spec.js',
+      'js/quran-extractive.spec.js',
       'js/surah-statistics.spec.js',
       'js/statistics-charts.spec.js'
     ],

@@ -46,12 +46,75 @@ describe('Questions from the Quran', function () {
             },
             corpus,
         );
-        var answer = catalog.answer('من فضلك كيف أَدْخُلُ الجنة في القرآن؟');
+        var answer = catalog.answer('من فضلك كَيْفَ أدخل الجَنَّة في القرآن؟');
         expect(answer.id).toBe('paradise');
         expect(answer.points[0].verses[0].text).toBe(
             corpus.verse('4:124').text,
         );
         expect(catalog.answer('هل أدخل الجنة دون إيمان؟')).toBeNull();
+    });
+
+    it('distinguishes complete words with the same letters and different vowels', function () {
+        var ruler = corpus.findPhrase('مَلِك').map(function (verse) {
+            return verse.ref;
+        });
+        var angel = corpus.findPhrase('مَلَك').map(function (verse) {
+            return verse.ref;
+        });
+        expect(ruler).toContain('18:79');
+        expect(angel).toContain('12:31');
+        expect(
+            ruler.filter(function (ref) {
+                return angel.includes(ref);
+            }),
+        ).toEqual([]);
+        expect(
+            corpus.findPhrase('دَيْنٍ').map(function (verse) {
+                return verse.ref;
+            }),
+        ).toEqual(['4:11', '4:12']);
+        expect(corpus.findPhrase('دِينٍ')).toEqual([]);
+        expect(corpus.findPhrase('الملِك').length).toBeGreaterThan(0);
+        expect(corpus.findPhrase('الملَك')).toEqual([]);
+    });
+
+    it('applies a marked term to the lexical results and to the semantic candidate set', function () {
+        var question = 'ما الآيات المتعلقة بمَلِك؟';
+        var refs = corpus.matchingRefs(QuranQuestions.constraints(question));
+        expect(refs.has('12:31')).toBe(false);
+        expect(refs.has('18:79')).toBe(true);
+        var matching = corpus.matchingRefs(
+            QuranQuestions.constraints('ما الآيات المتعلقة بـ «مَلِك»؟'),
+        );
+        expect(Array.from(matching)).toEqual(['18:79', '114:2']);
+        expect(
+            corpus
+                .search('أين وردت «مَلِك»؟')
+                .map(function (verse) {
+                    return verse.ref;
+                })
+                .sort(),
+        ).toEqual(['114:2', '18:79']);
+    });
+
+    it('does not reuse a topic when its wording changes to a different vocalization', function () {
+        var catalog = QuranQuestions.createCatalog(
+            {
+                version: 1,
+                topics: [
+                    {
+                        id: 'debt',
+                        question: 'كيف أوثق الدَّيْن؟',
+                        aliases: [],
+                        points: [{ text: 'كتابة الدين', refs: ['2:282'] }],
+                    },
+                ],
+            },
+            corpus,
+        );
+        expect(catalog.answer('كيف أوثق الدَّيْن؟').id).toBe('debt');
+        expect(catalog.answer('كيف أوثق الدِّين؟')).toBeNull();
+        expect(catalog.related('كيف أوثق الدِّين؟')).toEqual([]);
     });
 
     it('rejects missing evidence before rendering a prepared answer', function () {

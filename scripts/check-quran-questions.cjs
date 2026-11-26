@@ -100,15 +100,49 @@ const runSemantic = process.argv.includes('--semantic');
         assert.equal(await page.locator('.questions-topic-list li').count(), 1);
 
         await ask('أين ذكرت البعوضة؟');
+        assert.equal(await page.locator('.questions-answer').count(), 1);
+        assert.equal(
+            await page.locator('.questions-answer a').getAttribute('href'),
+            '#!/surah?id=2#ayah-26',
+        );
+        await ask('أين وردت البعوضة في سورة النساء؟');
         assert.equal(await page.locator('.questions-answer').count(), 0);
         assert.equal(
             await page.locator('.questions-related figure').count(),
-            1,
+            0,
+        );
+        assert.equal(await page.locator('.questions-semantic').count(), 0);
+
+        const answerRefs = () =>
+            page
+                .locator('.questions-answer a')
+                .evaluateAll((links) =>
+                    links.map((link) => link.getAttribute('href')),
+                );
+        await ask('أين وردت كلمة «مَلِك»؟');
+        const ruler = await answerRefs();
+        assert.ok(ruler.includes('#!/surah?id=18#ayah-79'));
+        await ask('أين وردت كلمة «مَلَك»؟');
+        const angel = await answerRefs();
+        assert.ok(angel.includes('#!/surah?id=12#ayah-31'));
+        assert.ok(!ruler.some((href) => angel.includes(href)));
+        await page.reload();
+        await page.locator('.questions-answer').waitFor();
+        assert.equal(await input.inputValue(), 'أين وردت كلمة «مَلَك»؟');
+        assert.deepEqual(await answerRefs(), angel);
+
+        await ask('من قال «رب أرني كيف تحيي الموتى»؟');
+        assert.match(
+            await page.locator('.questions-point h3').innerText(),
+            /إبراهيم/,
         );
         assert.equal(
-            await page.locator('.questions-related a').getAttribute('href'),
-            '#!/surah?id=2#ayah-26',
+            await page.locator('.questions-answer a').getAttribute('href'),
+            '#!/surah?id=2#ayah-260',
         );
+        await ask('من قال «أنا ربكم الأعلى»؟');
+        assert.equal(await page.locator('.questions-answer').count(), 0);
+        assert.equal(await page.locator('.questions-semantic').count(), 0);
         await ask('١١٢:١–٤');
         assert.equal(
             await page.locator('.questions-related figure').count(),
@@ -126,7 +160,7 @@ const runSemantic = process.argv.includes('--semantic');
         );
 
         if (runSemantic) {
-            await ask('أين أجد آيات عن أطوار خلق الإنسان؟');
+            await ask('ماذا يقول القرآن عن «مَلَك»؟');
             await page
                 .getByRole('button', {
                     name: 'نزّل النموذج وابحث',
@@ -143,6 +177,12 @@ const runSemantic = process.argv.includes('--semantic');
                 (await page.locator('.questions-related figure').count()) > 0,
             );
             assert.equal(await page.locator('.questions-answer').count(), 0);
+            const suggested = await page
+                .locator('.questions-related a')
+                .evaluateAll((links) =>
+                    links.map((link) => link.getAttribute('href')),
+                );
+            assert.ok(suggested.every((href) => angel.includes(href)));
             assert.ok(
                 modelRequests.every(
                     (url) => new URL(url).origin === new URL(base).origin,
@@ -156,6 +196,8 @@ const runSemantic = process.argv.includes('--semantic');
                 desktop: true,
                 mobileWidths: [320, 390],
                 exactVerseLinks: true,
+                distinguishVocalization: true,
+                scopedAbstention: true,
                 savedQuestionReload: true,
                 relatedVerses: true,
                 noAutomaticModelDownload: true,

@@ -13,15 +13,24 @@
                     <div class="questions-input-row">
                         <input id="questions-input" type="text" ng-model="vm.input"
                                maxlength="320" placeholder="كيف أدخل الجنة؟"
-                               autocomplete="off" required>
+                               aria-describedby="questions-input-hint" autocomplete="off" required>
                         <button type="submit" class="questions-primary"
                                 ng-disabled="!vm.ready || questionForm.$invalid">ابحث عن إجابة</button>
                     </div>
+                    <p class="questions-input-hint" id="questions-input-hint">
+                        عند السؤال عن لفظ محدد، ضعه بين «علامتي اقتباس» واكتب الحركات التي تريد مطابقتها.
+                    </p>
                 </form>
                 <div class="questions-examples" ng-if="vm.examples.length">
                     <span>أسئلة مقترحة</span>
                     <button ng-repeat="topic in vm.examples track by topic.id" type="button"
                             ng-click="vm.choose(topic)" ng-bind="topic.question"></button>
+                    <button type="button" ng-click="vm.askExample('أين وردت كلمة «دَيْنٍ»؟')">
+                        أين وردت كلمة «دَيْنٍ»؟
+                    </button>
+                    <button type="button" ng-click="vm.askExample('من قال «رب أرني كيف تحيي الموتى»؟')">
+                        من قال «رب أرني كيف تحيي الموتى»؟
+                    </button>
                 </div>
                 <p class="questions-state" role="status" ng-if="!vm.ready && !vm.error">يجري فتح فهرس الأسئلة…</p>
                 <div class="questions-catalog-error" ng-if="vm.error">
@@ -32,9 +41,22 @@
 
             <div class="questions-response" id="questions-response" role="region" aria-label="نتائج السؤال"
                  tabindex="-1" ng-if="vm.submitted">
+                <section class="questions-interpretation" ng-if="vm.interpretation.length"
+                         aria-labelledby="questions-interpretation-title">
+                    <h2 id="questions-interpretation-title">فهم السؤال</h2>
+                    <dl>
+                        <div ng-repeat="item in vm.interpretation track by $index">
+                            <dt ng-bind="item.label"></dt>
+                            <dd><bdi ng-bind="item.value"></bdi></dd>
+                        </div>
+                    </dl>
+                </section>
+
                 <section class="questions-answer" ng-if="vm.answer" aria-labelledby="questions-answer-title">
                     <header class="questions-answer-header">
-                        <span class="questions-kicker">إجابة من الآيات</span>
+                        <span class="questions-kicker">
+                            {{vm.answer.kind === 'extractive' ? 'إجابة مستخرجة من الآيات' : 'إجابة من الآيات'}}
+                        </span>
                         <h2 id="questions-answer-title" ng-bind="vm.answer.question"></h2>
                     </header>
                     <article class="questions-point" ng-repeat="point in vm.answer.points track by $index">
@@ -51,13 +73,16 @@
                     </article>
                 </section>
 
-                <div class="questions-examples" ng-if="vm.relatedTopics.length">
+                <p class="questions-abstention" role="status" ng-if="vm.clarification || (!vm.answer && !vm.reference)"
+                   ng-bind="vm.clarification || 'لم أجد إجابة مباشرة لهذا السؤال.'"></p>
+
+                <div class="questions-examples" ng-if="!vm.blockCandidates && vm.relatedTopics.length">
                     <span>أسئلة قريبة من سؤالك</span>
                     <button ng-repeat="topic in vm.relatedTopics track by topic.id" type="button"
                             ng-click="vm.choose(topic)" ng-bind="topic.question"></button>
                 </div>
 
-                <section class="questions-semantic" ng-if="vm.canSearchSemantically()"
+                <section class="questions-semantic" ng-if="!vm.blockCandidates && vm.canSearchSemantically()"
                          aria-labelledby="questions-semantic-title">
                     <div>
                         <h2 id="questions-semantic-title">ابحث بحسب المعنى</h2>
@@ -86,33 +111,38 @@
                     <p class="questions-semantic-status" role="status" ng-if="vm.retrieval.message" ng-bind="vm.retrieval.message"></p>
                 </section>
 
-                <section class="questions-related" ng-if="!vm.answer" aria-labelledby="questions-related-title">
-                    <header class="questions-answer-header">
-                        <h2 id="questions-related-title" ng-bind="vm.resultTitle"></h2>
-                        <p class="questions-submitted" ng-bind="vm.submitted"></p>
-                        <button ng-if="vm.canSwitchResults" type="button" ng-click="vm.switchResults()">
-                            {{vm.showingSemantic ? 'عرض مطابقات الكلمات' : 'عرض الآيات المقترحة'}}
-                        </button>
-                    </header>
-                    <p class="questions-state" role="status" ng-if="vm.reference && !vm.results.length">
-                        لم نجد آية بهذا الرقم. راجع رقم السورة والآية.
-                    </p>
-                    <p class="questions-state" role="status"
-                       ng-if="!vm.reference && !vm.results.length && vm.retrieval.status !== 'searching' && vm.retrieval.status !== 'loading'">
-                        لم نجد آيات مرتبطة بوضوح. جرّب صياغة أقصر أو اذكر كلمة تعرفها من الآية.
-                    </p>
-                    <figure class="questions-ayah" ng-repeat="verse in vm.results track by verse.ref">
-                        <blockquote ng-bind="verse.text"></blockquote>
-                        <figcaption>
-                            <a ng-href="{{verse.href}}" aria-label="قراءة {{verse.label}} في سياق السورة">
-                                <span ng-bind="verse.label"></span>
-                                <span aria-hidden="true">←</span>
-                            </a>
-                        </figcaption>
-                    </figure>
-                    <button class="questions-more" ng-if="vm.canShowMore" type="button" ng-click="vm.more()">
-                        عرض مزيد من الآيات
+                <section class="questions-related"
+                         ng-if="vm.reference || (!vm.answer && !vm.blockCandidates && vm.results.length)"
+                         aria-label="الآيات">
+                    <button class="questions-candidates-toggle" ng-if="!vm.reference" type="button"
+                            ng-click="vm.candidatesOpen = !vm.candidatesOpen"
+                            ng-attr-aria-expanded="{{!!vm.candidatesOpen}}" aria-controls="questions-result-verses">
+                        {{vm.candidatesOpen ? 'طيّ الآيات المقترحة' : 'عرض الآيات المقترحة'}}
                     </button>
+                    <div id="questions-result-verses" ng-show="vm.reference || vm.candidatesOpen">
+                        <header class="questions-answer-header">
+                            <h2 id="questions-related-title" ng-bind="vm.resultTitle"></h2>
+                            <p class="questions-submitted" ng-bind="vm.submitted"></p>
+                            <button ng-if="vm.canSwitchResults" type="button" ng-click="vm.switchResults()">
+                                {{vm.showingSemantic ? 'عرض مطابقات الكلمات' : 'عرض الاقتراحات بحسب المعنى'}}
+                            </button>
+                        </header>
+                        <p class="questions-state" role="status" ng-if="vm.reference && !vm.results.length">
+                            لم نجد آية بهذا الرقم. راجع رقم السورة والآية.
+                        </p>
+                        <figure class="questions-ayah" ng-repeat="verse in vm.results track by verse.ref">
+                            <blockquote ng-bind="verse.text"></blockquote>
+                            <figcaption>
+                                <a ng-href="{{verse.href}}" aria-label="قراءة {{verse.label}} في سياق السورة">
+                                    <span ng-bind="verse.label"></span>
+                                    <span aria-hidden="true">←</span>
+                                </a>
+                            </figcaption>
+                        </figure>
+                        <button class="questions-more" ng-if="vm.canShowMore" type="button" ng-click="vm.more()">
+                            عرض مزيد من الآيات
+                        </button>
+                    </div>
                 </section>
             </div>
         </div>

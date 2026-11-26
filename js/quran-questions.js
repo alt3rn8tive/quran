@@ -8,6 +8,7 @@ var QuranQuestions = (function () {
             'الذي التي الذين يقول تقول قال ذكر ذكرت يذكر تذكر ورد وردت ذكرها ايات ايه قران الكريم الله تعالي',
             'بخصوص حول اريد اعطيني اشرح تحدث حدثني لي لنا حكم عدد كم بين بعد قبل عند لم لا كل يا به بها فيه فيها',
             'وهل فان بما مما كما الا سوره قول كلام كيفيه دليل دلائل امثله مثال مع جاء جاءت نص فضلك سمحت',
+            'كلمه لفظ عباره ابحث اجد توجد يوجد ترد وردت يظهر تظهر',
         ]
             .join(' ')
             .split(' '),
@@ -62,10 +63,17 @@ var QuranQuestions = (function () {
             );
     }
 
+    function constraints(question) {
+        return QuranQuestionForms.constraints(question, function (word) {
+            return keywords(word).length > 0;
+        });
+    }
+
     function createCorpus(ayat, suwar) {
         var names = new Map();
         var verses = new Map();
         var postings = new Map();
+        var forms = new Map();
         var indexedLength = 0;
 
         suwar.forEach(function (surah) {
@@ -77,6 +85,7 @@ var QuranQuestions = (function () {
         ayat.forEach(function (ayah) {
             var ref = ayah.sura_id + ':' + ayah.verse_id;
             var text = ayah.text.trim();
+            forms.set(ref, QuranQuestionForms.tokenize(text));
             var words = keywords(text);
             var frequencies = new Map();
             words.forEach(function (word) {
@@ -133,7 +142,42 @@ var QuranQuestions = (function () {
             return result;
         }
 
-        function search(question) {
+        function matchingRefs(scope) {
+            if (!scope.active) return null;
+            return new Set(
+                Array.from(forms)
+                    .filter(function (entry) {
+                        return scope.matches(entry[1]);
+                    })
+                    .map(function (entry) {
+                        return entry[0];
+                    }),
+            );
+        }
+
+        function findPhrase(phrase, options) {
+            var requested = QuranQuestionForms.tokenize(phrase);
+            var results = [];
+            forms.forEach(function (words, ref) {
+                var count = QuranQuestionForms.occurrences(
+                    requested,
+                    words,
+                    options && options.loose,
+                );
+                if (count)
+                    results.push(
+                        Object.assign({ occurrences: count }, verses.get(ref)),
+                    );
+            });
+            return results;
+        }
+
+        function search(question, matching, relaxed) {
+            if (matching === undefined) {
+                var scope = constraints(question);
+                if (scope.invalid || scope.phrases.length > 1) return [];
+                matching = matchingRefs(scope);
+            }
             var terms = Array.from(new Set(keywords(question))).slice(0, 25);
             var matches = new Map();
             var averageLength = indexedLength / verses.size;
@@ -146,6 +190,7 @@ var QuranQuestions = (function () {
                             (entries.length + 0.5),
                 );
                 entries.forEach(function (entry) {
+                    if (matching && !matching.has(entry.ref)) return;
                     var ranking = matches.get(entry.ref) || {
                         score: 0,
                         terms: 0,
@@ -159,7 +204,9 @@ var QuranQuestions = (function () {
                     matches.set(entry.ref, ranking);
                 });
             });
-            var required = Math.max(1, Math.ceil(terms.length / 2));
+            var required = relaxed
+                ? 1
+                : Math.max(1, Math.ceil(terms.length / 2));
             return Array.from(matches)
                 .filter(function (candidate) {
                     return candidate[1].terms >= required;
@@ -179,6 +226,11 @@ var QuranQuestions = (function () {
             },
             reference: reference,
             search: search,
+            matchingRefs: matchingRefs,
+            findPhrase: findPhrase,
+            matches: function (verse, scope) {
+                return scope.matches(forms.get(verse.ref));
+            },
         };
     }
 
@@ -204,6 +256,7 @@ var QuranQuestions = (function () {
                 id: topic.id,
                 question: topic.question,
                 filterText: normalize(phrases.join(' ')),
+                phraseForms: phrases.map(QuranQuestionForms.tokenize),
                 points: topic.points.map(function (point) {
                     if (
                         !point.text ||
@@ -234,7 +287,20 @@ var QuranQuestions = (function () {
             return entry;
         });
 
-        function related(question) {
+        function supports(entry, scope) {
+            if (!scope.active) return true;
+            if (!scope.phrases.length && entry.phraseForms.some(scope.matches))
+                return true;
+            return entry.points.some(function (point) {
+                return point.verses.some(function (verse) {
+                    return corpus.matches(verse, scope);
+                });
+            });
+        }
+
+        function related(question, scope) {
+            scope = scope || constraints(question);
+            if (scope.invalid || scope.phrases.length > 1) return [];
             var words = Array.from(new Set(keywords(question)));
             var scores = new Map();
             phraseIndex.forEach(function (entry) {
@@ -251,25 +317,54 @@ var QuranQuestions = (function () {
                 .sort(function (left, right) {
                     return right[1] - left[1];
                 })
-                .slice(0, 3)
                 .map(function (match) {
                     return match[0];
-                });
+                })
+                .filter(function (entry) {
+                    return supports(entry, scope);
+                })
+                .slice(0, 3);
         }
 
         return {
             topics: topics,
-            answer: function (question) {
-                return aliases.get(comparable(question)) || null;
+            answer: function (question, scope) {
+                scope = scope || constraints(question);
+                var entry = aliases.get(comparable(question));
+                return entry &&
+                    !scope.invalid &&
+                    scope.phrases.length <= 1 &&
+                    supports(entry, scope)
+                    ? entry
+                    : null;
             },
             related: related,
         };
+    }
+
+    function mergeRanks(semantic, lexical) {
+        var scores = new Map();
+        [semantic, lexical].forEach(function (ranking) {
+            Array.from(new Set(ranking)).forEach(function (ref, index) {
+                scores.set(ref, (scores.get(ref) || 0) + 1 / (60 + index + 1));
+            });
+        });
+        return Array.from(scores)
+            .sort(function (left, right) {
+                return right[1] - left[1];
+            })
+            .slice(0, 12)
+            .map(function (entry) {
+                return entry[0];
+            });
     }
 
     return {
         normalize: normalize,
         createCorpus: createCorpus,
         createCatalog: createCatalog,
+        constraints: constraints,
+        mergeRanks: mergeRanks,
     };
 })();
 
@@ -282,13 +377,15 @@ myApp.controller(
         var modelPath = 'models/quran-questions-e5-v1/';
         var corpus,
             catalog,
+            extractive,
             worker,
             timeout,
             queryId = 0,
             destroyed = false;
         var resultPool = [],
             lexicalResults = [],
-            semanticResults = null;
+            semanticResults = null,
+            candidateRefs = null;
         vm.input = '';
         vm.topics = [];
         vm.examples = [];
@@ -342,6 +439,12 @@ myApp.controller(
                         response.data,
                         corpus,
                     );
+                    extractive = QuranExtractive.create(
+                        all_ayat,
+                        all_suwar,
+                        corpus,
+                        corpus.findPhrase,
+                    );
                     vm.topics = catalog.topics;
                     vm.examples = vm.topics.slice(0, 4);
                     vm.ready = true;
@@ -361,19 +464,87 @@ myApp.controller(
                 stopWorker();
             vm.retrieval.message = '';
             vm.submitted = question;
-            vm.answer = question ? catalog.answer(question) : null;
-            var direct =
-                question && !vm.answer ? corpus.reference(question) : null;
+            var scope = QuranQuestions.constraints(question);
+            var direct = question ? corpus.reference(question) : null;
             vm.reference = direct !== null;
+            var extracted =
+                !vm.reference &&
+                question &&
+                !scope.invalid &&
+                scope.phrases.length <= 1
+                    ? extractive.answer(question)
+                    : null;
+            vm.interpretation = [];
+            vm.clarification = '';
+            vm.answer = null;
+            vm.candidatesOpen = false;
+            vm.blockCandidates = false;
+            if (scope.invalid || scope.phrases.length > 1) {
+                vm.clarification =
+                    'اكتب عبارة واحدة بين علامتي تنصيص متطابقتين حتى أحدد اللفظ المطلوب.';
+                vm.blockCandidates = true;
+            } else if (extracted && extracted.clarification) {
+                vm.clarification = extracted.clarification;
+                vm.blockCandidates = extracted.blockCandidates;
+            } else if (!vm.reference && question) {
+                vm.answer = extracted || catalog.answer(question, scope);
+                if (
+                    !vm.answer &&
+                    /(?:^|\s)(?:في|من) سور[هة](?:\s|$)/u.test(
+                        QuranQuestions.normalize(question),
+                    )
+                ) {
+                    vm.clarification =
+                        'لتقييد البحث بسورة، جرّب «أين وردت كلمة “…” في سورة …؟» أو اكتب رقم السورة والآية.';
+                    vm.blockCandidates = true;
+                }
+            }
+
+            var literal =
+                (scope.phrases && scope.phrases[0]) ||
+                (extracted && extracted.constraint);
+            if (literal)
+                vm.interpretation.push({
+                    label: 'اللفظ المطلوب',
+                    value: literal,
+                });
+            if (scope.evidence && scope.evidence.length)
+                vm.interpretation.push({
+                    label: 'الحركات المحددة',
+                    value: scope.evidence.join('، '),
+                });
+            if (literal && /[\u064b-\u0652\u0670]/u.test(literal))
+                vm.interpretation.push({
+                    label: 'مطابقة الحركات',
+                    value: 'الحركات المكتوبة في اللفظ',
+                });
+            if (extracted && extracted.scope)
+                vm.interpretation.push({
+                    label: 'السورة',
+                    value: extracted.scope,
+                });
+
+            candidateRefs =
+                !vm.blockCandidates && !vm.answer && !vm.reference
+                    ? corpus.matchingRefs(scope)
+                    : null;
+            if (candidateRefs && !candidateRefs.size) {
+                vm.clarification =
+                    'لم أجد آية تطابق اللفظ والحركات التي كتبتها. راجع الحركات أو اكتب رقم السورة والآية.';
+                vm.blockCandidates = true;
+            }
+            if (question && !vm.answer && !vm.reference && !vm.clarification)
+                vm.clarification =
+                    'لم أجد إجابة مباشرة لهذا السؤال. يمكنك تحديد اللفظ بين علامتي تنصيص أو قراءة الآيات المقترحة.';
             vm.relatedTopics =
-                question && !vm.answer && !vm.reference
-                    ? catalog.related(question)
+                question && !vm.blockCandidates && !vm.answer && !vm.reference
+                    ? catalog.related(question, scope)
                     : [];
             semanticResults = null;
             lexicalResults =
-                !question || vm.answer || vm.reference
+                !question || vm.answer || vm.reference || vm.blockCandidates
                     ? []
-                    : corpus.search(question);
+                    : corpus.search(question, candidateRefs);
             vm.canSwitchResults = false;
             vm.showingSemantic = false;
             vm.resultTitle = vm.reference
@@ -413,7 +584,11 @@ myApp.controller(
         };
 
         vm.choose = function (topic) {
-            vm.input = topic.question;
+            vm.askExample(topic.question);
+        };
+
+        vm.askExample = function (question) {
+            vm.input = question;
             vm.ask();
         };
 
@@ -441,6 +616,7 @@ myApp.controller(
                 vm.retrieval.available &&
                 !vm.answer &&
                 !vm.reference &&
+                !vm.blockCandidates &&
                 /[\u0621-\u063a\u0641-\u064a]/u.test(vm.submitted || '')
             );
         };
@@ -465,10 +641,18 @@ myApp.controller(
             }
 
             try {
-                if (!worker)
-                    worker = new $window.Worker(modelPath + 'worker.js', {
-                        type: 'module',
-                    });
+                if (!worker) {
+                    var version =
+                        typeof QuranRelease === 'undefined'
+                            ? 'dev'
+                            : QuranRelease.current;
+                    worker = new $window.Worker(
+                        'js/quran-retrieval-worker.mjs?v=' + version,
+                        {
+                            type: 'module',
+                        },
+                    );
+                }
                 worker.onerror = function () {
                     $scope.$evalAsync(failed);
                 };
@@ -500,21 +684,36 @@ myApp.controller(
                         timeout = null;
                         vm.retrieval.status = 'ready';
                         vm.retrieval.progress = null;
-                        semanticResults = Array.from(
-                            new Set(
-                                message.results.map(function (match) {
-                                    return match.ref;
-                                }),
-                            ),
-                        )
-                            .map(corpus.verse)
-                            .filter(Boolean);
+                        var contextual = message.results
+                            .map(function (match) {
+                                return match.ref;
+                            })
+                            .filter(function (ref) {
+                                return (
+                                    corpus.verse(ref) &&
+                                    (!candidateRefs || candidateRefs.has(ref))
+                                );
+                            });
+                        var words = corpus
+                            .search(vm.submitted, candidateRefs, true)
+                            .slice(0, 12)
+                            .map(function (verse) {
+                                return verse.ref;
+                            });
+                        semanticResults = QuranQuestions.mergeRanks(
+                            contextual,
+                            words,
+                        ).map(corpus.verse);
                         vm.canSwitchResults = true;
                         vm.showingSemantic = false;
+                        vm.candidatesOpen = true;
                         vm.switchResults();
                     });
                 };
-                worker.postMessage({ id: id, question: vm.submitted });
+                var request = { id: id, question: vm.submitted };
+                if (candidateRefs)
+                    request.candidateRefs = Array.from(candidateRefs);
+                worker.postMessage(request);
                 timeout = $timeout(failed, 120000);
             } catch (error) {
                 failed();

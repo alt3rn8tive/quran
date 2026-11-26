@@ -1218,7 +1218,8 @@ input[type=checkbox] { accent-color: var(--accent); width: 18px; height: 18px; }
 .questions-catalog,
 .questions-answer,
 .questions-related,
-.questions-semantic {
+.questions-semantic,
+.questions-interpretation {
     border: 1px solid var(--line);
     border-radius: 16px;
     background: #fff;
@@ -1266,6 +1267,11 @@ input[type=checkbox] { accent-color: var(--accent); width: 18px; height: 18px; }
 }
 .questions-input-row .questions-primary:hover:not(:disabled) {
     background: #105346;
+}
+.questions-input-hint {
+    margin: .45rem 0 0;
+    color: #425f57;
+    font-size: .85rem;
 }
 .questions-examples {
     display: flex;
@@ -1319,6 +1325,47 @@ input[type=checkbox] { accent-color: var(--accent); width: 18px; height: 18px; }
     color: var(--ink);
     font-size: clamp(1.15rem, 2.5vw, 1.5rem);
     margin: 0;
+}
+.questions-interpretation h2 {
+    font-size: 1rem;
+}
+.questions-interpretation dl {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .45rem;
+    margin: .6rem 0 0;
+}
+.questions-interpretation dl div {
+    display: flex;
+    flex-wrap: wrap;
+    column-gap: .45rem;
+    min-width: 0;
+    padding: .3rem .65rem;
+    border: 1px solid #d1e2d8;
+    border-radius: 8px;
+    background: #f2f7f3;
+    font-size: .865rem;
+}
+.questions-interpretation dt {
+    font-weight: 700;
+}
+.questions-interpretation dd {
+    min-width: 0;
+    margin: 0;
+}
+.questions-abstention {
+    margin: 0;
+    padding: .85rem 1rem;
+    border: 1px solid #e1d9c4;
+    border-radius: 12px;
+    background: #faf7ef;
+    color: #554a2d;
+}
+.questions-response > .questions-examples {
+    margin-block-start: 0;
+}
+.questions-candidates-toggle + div:not(.ng-hide) {
+    margin-block-start: .8rem;
 }
 .questions-answer-header {
     margin-block-end: .95rem;
